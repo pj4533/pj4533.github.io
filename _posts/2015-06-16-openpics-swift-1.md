@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "OpenPics In Swift: Part 1"
+title:  "OpenPics In Swift: The Re-Beginning"
 date:   2015-06-16 22:25:12
 ---
 
@@ -74,3 +74,4 @@ override func viewDidAppear(animated: Bool) {
 Obviously, this is not ideal.
 
 But these are issues for another day.  Check out the [repo](https://github.com/pj4533/OpenPicsSwift), and stay tuned for Part 2!
+
