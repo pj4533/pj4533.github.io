@@ -8,3 +8,5 @@ github_username:  pj4533
 
 # Build settings
 markdown: kramdown
+gems:
+  - jekyll-gist
