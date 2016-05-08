@@ -15,7 +15,7 @@ I started by installing [Raspbian Lite](https://www.raspberrypi.org/downloads/ra
 
 I run everything headless, so after getting a bootable image on the card, I connected via ethernet to setup wifi.  Easiest way to find the IP:  `arp -na | grep -i b8:27:eb`   Once on the Pi, I move my public SSH key to the `authorized_keys` file on the Pi, so I can SSH in easily.  Details [here](http://www.linuxproblem.org/art_9.html) on that.
 
-Also don't forget to expand the file system using `sudo raspi-config`, so you get full use of the 16gb card.
+Also don't forget to expand the file system using `sudo raspi-config`, so you get full use of the 32gb card.
 
 Then I setup wifi, [here](https://www.raspberrypi.org/documentation/configuration/wireless/wireless-cli.md) is a good link on that.
 
