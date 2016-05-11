@@ -10,3 +10,4 @@ github_username:  pj4533
 markdown: kramdown
 gems:
   - jekyll-gist
+  - jekyll-seo-tag
