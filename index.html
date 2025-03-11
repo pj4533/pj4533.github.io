@@ -185,9 +185,9 @@ class TextParticle {
       // Clear canvas
       context.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Less blurry glow effect with better clarity
+      // Minimal shadow blur for maximum clarity and sharpness
       context.shadowColor = `#${hexColor}`;
-      context.shadowBlur = 18; // Reduced blur for less blurriness while keeping glow
+      context.shadowBlur = 10; // Much less blur for sharper text
       context.shadowOffsetX = 0;
       context.shadowOffsetY = 0;
       
@@ -222,12 +222,10 @@ class TextParticle {
         // Reset fill style to gradient
         context.fillStyle = gradient;
         
-        // Add clearer glow passes for repo names (fewer passes with less blur)
-        for (let i = 0; i < 2; i++) {
-          context.shadowBlur = 15 - i * 5;
-          context.shadowColor = `#${hexColor}`;
-          context.strokeText(safeText, canvas.width / 2, canvas.height / 2);
-        }
+        // Minimal glow passes for maximum clarity (single pass)
+        context.shadowBlur = 8;
+        context.shadowColor = `#${hexColor}`;
+        context.strokeText(safeText, canvas.width / 2, canvas.height / 2);
       }
       
       // Draw text (first stroke for outline, then fill)
@@ -1185,6 +1183,16 @@ function checkCollisions() {
     }
   }
   
+  // Track if we're currently showing a repo to prevent overlapping displays
+  if (!window.gameState) {
+    window.gameState = {
+      isShowingRepo: false,
+      lastRepoShownTime: 0
+    };
+  }
+  const currentTime = Date.now();
+  const REPO_DISPLAY_COOLDOWN = 5000; // Minimum 5 seconds between repo displays
+
   // Check collectible collisions
   for (let i = collectibles.length - 1; i >= 0; i--) {
     const collectible = collectibles[i];
@@ -1199,8 +1207,23 @@ function checkCollisions() {
     // Check for collectible pickup
     const distance = player.position.distanceTo(collectible.position);
     if (distance < playerSize + 0.7) {
-      // Create collection effect
-      createCollectionEffect(collectible.position.x, collectible.position.y, collectible.position.z);
+      // Only show repo if enough time has passed since the last one
+      const shouldShowRepo = !window.gameState.isShowingRepo && 
+                             (currentTime - window.gameState.lastRepoShownTime > REPO_DISPLAY_COOLDOWN);
+      
+      // Create collection effect (potentially without showing repo)
+      createCollectionEffect(collectible.position.x, collectible.position.y, collectible.position.z, shouldShowRepo);
+      
+      // If we're showing a repo, update our state
+      if (shouldShowRepo) {
+        window.gameState.isShowingRepo = true;
+        window.gameState.lastRepoShownTime = currentTime;
+        
+        // Reset the flag after a delay to allow showing the next repo
+        setTimeout(() => {
+          window.gameState.isShowingRepo = false;
+        }, REPO_DISPLAY_COOLDOWN);
+      }
       
       // Different scores for different collectible types
       let points = 0;
@@ -1292,7 +1315,7 @@ function createExplosion(x, y, z) {
 }
 
 // Create collection effect when player picks up collectible (optimized)
-function createCollectionEffect(x, y, z) {
+function createCollectionEffect(x, y, z, showRepo = true) {
   // Create expanding ring (simplified geometry for performance)
   const ringGeometry = new THREE.RingGeometry(0.1, 0.15, 16); // Reduced segments
   const ringMaterial = new THREE.MeshBasicMaterial({
@@ -1346,8 +1369,8 @@ function createCollectionEffect(x, y, z) {
   pointLight.position.set(x, y, z);
   scene.add(pointLight);
   
-  // Display GitHub repo info if available
-  if (githubRepos && githubRepos.length > 0) {
+  // Display GitHub repo info if available AND if showRepo flag is true
+  if (showRepo && githubRepos && githubRepos.length > 0) {
     // Get the next repository from the front of the array (newest repos first)
     // This ensures we're always showing the most recently updated repos first
     const repo = githubRepos[0];
