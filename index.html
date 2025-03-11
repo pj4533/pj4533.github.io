@@ -522,9 +522,13 @@ function init() {
   updateScore(0);
   
   // Check local storage for high score
-  if (localStorage.getItem('neonWaveHighScore')) {
-    highScore = parseInt(localStorage.getItem('neonWaveHighScore'));
-    document.querySelector('.high-score').innerHTML = 'HIGH SCORE: ' + highScore;
+  try {
+    if (localStorage.getItem('neonWaveHighScore')) {
+      highScore = parseInt(localStorage.getItem('neonWaveHighScore'));
+      console.log('Loaded high score:', highScore);
+    }
+  } catch (err) {
+    console.error('Error loading high score:', err);
   }
   
   // Start animation loop
@@ -1131,14 +1135,23 @@ function onWindowResize() {
 // Update game score
 function updateScore(newScore) {
   score = newScore;
-  document.getElementById('score').innerHTML = 'Score: ' + score;
-  document.querySelector('.final-score').innerHTML = 'Score: ' + score;
   
-  // Update high score if needed
-  if (score > highScore) {
-    highScore = score;
-    document.querySelector('.high-score').innerHTML = 'HIGH SCORE: ' + highScore;
-    localStorage.setItem('neonWaveHighScore', highScore);
+  // Safely update the score display
+  try {
+    const scoreElement = document.getElementById('score');
+    if (scoreElement) {
+      scoreElement.innerHTML = 'Score: ' + score;
+    }
+    
+    // Update high score if needed
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem('neonWaveHighScore', highScore);
+      
+      // No longer need to update the high-score element as we removed the game over screen
+    }
+  } catch (err) {
+    console.error('Error updating score display:', err);
   }
 }
 
@@ -1276,19 +1289,21 @@ function createExplosion(x, y, z) {
   
   // Animate particles
   const animateParticles = () => {
-    if (gameOver) {
-      particles.forEach(particle => {
-        particle.position.x += particle.velocity.x;
-        particle.position.y += particle.velocity.y;
-        particle.position.z += particle.velocity.z;
-        
-        particle.material.opacity -= 0.02;
-        
-        if (particle.material.opacity <= 0) {
-          scene.remove(particle);
-        }
-      });
+    // Always animate particles (removed gameOver check)
+    particles.forEach(particle => {
+      particle.position.x += particle.velocity.x;
+      particle.position.y += particle.velocity.y;
+      particle.position.z += particle.velocity.z;
       
+      particle.material.opacity -= 0.02;
+      
+      if (particle.material.opacity <= 0) {
+        scene.remove(particle);
+      }
+    });
+    
+    // Continue animation if particles exist
+    if (particles.length > 0) {
       requestAnimationFrame(animateParticles);
     }
   };
