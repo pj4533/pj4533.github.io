@@ -556,30 +556,8 @@ function init() {
     githubRepos = repos;
     console.log('Loaded GitHub repos:', githubRepos.length);
     
-    // Update more frequently to ensure we always have fresh content
-    setInterval(() => {
-      if (gameStarted) {
-        console.log('Automatic refresh of GitHub repos...');
-        fetchGitHubRepos().then(freshRepos => {
-          if (freshRepos.length > 0) {
-            // Always use the fresh data to ensure we have the most current repos
-            githubRepos = freshRepos;
-            console.log('Auto-updated GitHub repos:', githubRepos.length);
-          }
-        }).catch(error => {
-          console.error('Error during auto-update of GitHub repos:', error);
-          // Attempt again after a short delay if failed
-          setTimeout(() => {
-            fetchGitHubRepos().then(repos => {
-              if (repos.length > 0) {
-                githubRepos = repos;
-                console.log('Re-attempted GitHub repo fetch successful:', githubRepos.length);
-              }
-            });
-          }, 5000);
-        });
-      }
-    }, 30000); // Check every 30 seconds for updates - more frequent refresh
+    // Only fetch repos once at launch - no automatic refreshes
+    console.log('GitHub repos loaded once at launch - will not automatically refresh');
   });
   
   // Handle window resize
@@ -1487,17 +1465,7 @@ function createCollectionEffect(x, y, z, showRepo = true) {
       githubRepos.push(usedRepo); // Add to end
     }
     
-    // Always try to get fresh repo data when showing a repo
-    if (Math.random() < 0.5) { // 50% chance to refresh on collection
-      fetchGitHubRepos().then(repos => {
-        if (repos.length > 0) {
-          githubRepos = repos;
-          console.log('Refreshed GitHub repos during collection:', githubRepos.length);
-        }
-      }).catch(error => {
-        console.warn('Unable to refresh repos during collection:', error);
-      });
-    }
+    // No automatic refresh on collection - using initial data only
   }
   
   // Animate expanding ring and particles
@@ -1628,33 +1596,17 @@ function refreshGame() {
   // Flash grid for visual effect
   flashGrid();
   
-  // Reload GitHub repositories - always fetch live data
-  fetchGitHubRepos().then(repos => {
-    if (repos.length > 0) {
-      githubRepos = repos;
-      console.log('Refreshed GitHub repos:', githubRepos.length);
-      
-      // Show newest repo as an announcement
-      if (githubRepos.length > 0) {
-        setTimeout(() => {
-          const newestRepo = githubRepos[0];
-          const center = new THREE.Vector3(0, 2, -3);
-          createExplodingRepoText(center, newestRepo);
-        }, 500);
-      }
-    }
-  }).catch(error => {
-    console.error('Error refreshing GitHub repos:', error);
-    // Attempt to fetch again after a delay
+  // Use existing repo data - no additional fetch
+  if (githubRepos && githubRepos.length > 0) {
+    console.log('Using existing GitHub repos:', githubRepos.length);
+    
+    // Show newest repo as an announcement
     setTimeout(() => {
-      fetchGitHubRepos().then(repos => {
-        if (repos.length > 0) {
-          githubRepos = repos;
-          console.log('Re-attempted GitHub repo fetch successful:', githubRepos.length);
-        }
-      });
-    }, 3000);
-  });
+      const newestRepo = githubRepos[0];
+      const center = new THREE.Vector3(0, 2, -3);
+      createExplodingRepoText(center, newestRepo);
+    }, 500);
+  }
   
   // Create new collectibles
   for (let i = 0; i < 5; i++) {
@@ -1808,19 +1760,7 @@ function animate() {
         console.error('Error in game logic:', err);
       }
       
-      // Always ensure we have fresh GitHub data
-      // If we have fewer than 3 repos or a random chance (1% per frame)
-      if (githubRepos.length < 3 || Math.random() < 0.01) {
-        console.log('Refreshing GitHub repos from animation loop...');
-        fetchGitHubRepos().then(repos => {
-          if (repos && repos.length > 0) {
-            githubRepos = repos;
-            console.log('Reloaded GitHub repos from animation loop:', githubRepos.length);
-          }
-        }).catch(err => {
-          console.error('Error fetching GitHub repos from animation loop:', err);
-        });
-      }
+      // No refresh in animation loop - using initial data only
     }
     
     // Render scene
