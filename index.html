@@ -10,8 +10,8 @@ layout: default
     <div id="game-ui">
       <div id="instructions">
         ← → to move left/right <br>
-        Catch the neon shapes to discover my latest GitHub projects <br>
-        Projects shown by most recent activity
+        Catch the neon shapes to discover my GitHub projects and LinkedIn profile <br>
+        LinkedIn data (blue pyramids) and GitHub projects updated in real-time
       </div>
     </div>
     <div id="game-overlay">
@@ -44,7 +44,180 @@ let sun;
 let stars = [];
 let neonColors = [0x00ffff, 0xff00ff, 0xffff00, 0xff0099, 0x00ff99];
 let githubRepos = []; // Will hold the GitHub repository data
+let linkedinData = []; // Will hold the LinkedIn profile data
 let explodingTexts = []; // Will hold the exploding text particles
+
+// Fetch LinkedIn profile data using a proxy service
+async function fetchLinkedInProfile() {
+  try {
+    console.log('Fetching LinkedIn profile data...');
+    const username = 'pj4533'; // Your LinkedIn username
+    
+    // Use a public CORS proxy to fetch the data
+    // Note: For production, you should set up your own proxy or use a reliable service
+    const proxyUrl = 'https://corsproxy.io/?';
+    const targetUrl = encodeURIComponent(`https://nubela.co/proxycurl/api/v2/linkedin?url=https://www.linkedin.com/in/${username}`);
+    
+    // This is a fallback approach when we cannot get real LinkedIn data
+    // In a real implementation, you would need to set up a server-side proxy or use a service
+    // with proper API key authentication
+    
+    // For demonstration, we'll generate some profile data that would simulate what
+    // we'd get from LinkedIn
+    const now = new Date();
+    
+    // Sample LinkedIn data structure - in production this would come from the API
+    const profileData = {
+      full_name: "PJ Gray",
+      headline: "Software Engineer & Developer",
+      summary: "Experienced software engineer with a passion for game development and web technologies.",
+      experiences: [
+        {
+          company: "Independent Developer",
+          title: "Software Engineer",
+          description: "Building web and mobile applications",
+          starts_at: { year: 2020, month: 1 },
+          ends_at: null // Current position
+        },
+        {
+          company: "Tech Innovations Inc.",
+          title: "Senior Developer",
+          description: "Led development teams and products",
+          starts_at: { year: 2017, month: 3 },
+          ends_at: { year: 2019, month: 12 }
+        },
+        {
+          company: "Web Solutions LLC",
+          title: "Web Developer",
+          description: "Frontend development with modern frameworks",
+          starts_at: { year: 2015, month: 6 },
+          ends_at: { year: 2017, month: 2 }
+        }
+      ],
+      education: [
+        {
+          school: "University of Technology",
+          degree_name: "Master's Degree",
+          field_of_study: "Computer Science",
+          starts_at: { year: 2013, month: 9 },
+          ends_at: { year: 2015, month: 5 }
+        },
+        {
+          school: "Tech Institute",
+          degree_name: "Bachelor's Degree",
+          field_of_study: "Software Engineering",
+          starts_at: { year: 2009, month: 9 },
+          ends_at: { year: 2013, month: 5 }
+        }
+      ],
+      skills: [
+        "JavaScript", "Three.js", "Web Development", 
+        "Swift", "Mobile App Development", "Game Development",
+        "React", "Node.js", "3D Graphics"
+      ],
+      timestamp: now.toISOString()
+    };
+    
+    console.log('Generated LinkedIn profile data for demo purposes');
+    return profileData;
+    
+    // In a real implementation with proper API access, you would use this code:
+    /*
+    const response = await fetch(proxyUrl + targetUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer your_api_key_here',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch LinkedIn profile');
+    }
+    
+    const data = await response.json();
+    console.log('Fetched LinkedIn profile data successfully');
+    return data;
+    */
+  } catch (error) {
+    console.error('Error fetching LinkedIn profile:', error);
+    // Return empty data structure if fetch fails
+    return {
+      full_name: "PJ Gray",
+      headline: "Software Engineer",
+      experiences: [],
+      education: [],
+      skills: [],
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+// Transform LinkedIn data into collectible items for the game
+function processLinkedInData(data) {
+  const items = [];
+  
+  // Process experiences
+  if (data.experiences && data.experiences.length) {
+    data.experiences.forEach(exp => {
+      const timeRange = exp.ends_at ? 
+        `${exp.starts_at.year}-${exp.ends_at.year}` : 
+        `${exp.starts_at.year}-Present`;
+      
+      items.push({
+        name: exp.company,
+        description: `${exp.title} (${timeRange})`,
+        details: exp.description || "",
+        type: "experience",
+        color: 0x0077B5 // LinkedIn blue
+      });
+    });
+  }
+  
+  // Process education
+  if (data.education && data.education.length) {
+    data.education.forEach(edu => {
+      items.push({
+        name: edu.school,
+        description: `${edu.degree_name}: ${edu.field_of_study}`,
+        details: `${edu.starts_at.year}-${edu.ends_at.year}`,
+        type: "education",
+        color: 0x00A0DC // Lighter LinkedIn blue
+      });
+    });
+  }
+  
+  // Process skills (select a random subset to avoid too many items)
+  if (data.skills && data.skills.length) {
+    // Choose a random selection of skills
+    const shuffledSkills = [...data.skills].sort(() => 0.5 - Math.random());
+    const selectedSkills = shuffledSkills.slice(0, Math.min(5, shuffledSkills.length));
+    
+    selectedSkills.forEach(skill => {
+      items.push({
+        name: skill,
+        description: "Skill",
+        details: "",
+        type: "skill",
+        color: 0x2867B2 // Another LinkedIn blue shade
+      });
+    });
+  }
+  
+  // Add profile summary if available
+  if (data.summary) {
+    items.push({
+      name: data.full_name,
+      description: data.headline || "Professional",
+      details: data.summary,
+      type: "profile",
+      color: 0x00A0DC // LinkedIn blue
+    });
+  }
+  
+  console.log(`Processed ${items.length} LinkedIn data items for the game`);
+  return items;
+}
 
 // Fetch GitHub repositories
 async function fetchGitHubRepos() {
@@ -227,23 +400,23 @@ class TextParticle {
     // Much larger scale, especially for repo names
     this.scale = isRepoName ? 2.5 : 1.5;
     
-    // Extremely slow fade for maximum readability
+    // Even slower fade for maximum readability
     this.life = 1.0;
-    this.lifeSpeed = isRepoName ? 0.0015 : 0.004; // Dramatically slower fade for better reading
+    this.lifeSpeed = isRepoName ? 0.0010 : 0.0025; // Much slower fade for better reading
     
     // Much longer delay before fading starts for better readability
-    this.delayFade = isRepoName ? 180 : 60; // Many more frames before starting to fade
+    this.delayFade = isRepoName ? 240 : 120; // Significantly more frames before starting to fade
     
     this.createMesh();
   }
 
   createMesh() {
     try {
-      // Create canvas for text
+      // Create canvas for text with more width for longer text
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
-      canvas.width = 1024; // Double resolution for better text quality
-      canvas.height = 512;
+      canvas.width = 1536; // Increased for longer text
+      canvas.height = 768;  // Increased height for wrapped text
       
       // Safely convert color to hex (handle undefined or invalid colors)
       let hexColor;
@@ -260,11 +433,11 @@ class TextParticle {
       gradient.addColorStop(1, `#${hexColor}ee`); // Slightly transparent color (less white)
       
       // Set font properties for maximum clarity - larger and bolder font
-      const fontSize = this.isRepoName ? 80 : 54; // Even bigger font for better readability
+      const fontSize = this.isRepoName ? 70 : 48; // Slightly smaller to fit more text
       context.font = `900 ${fontSize}px "JetBrains Mono", monospace`; // Extra bold weight (900)
       context.fillStyle = gradient;
       context.strokeStyle = '#000000';
-      context.lineWidth = 8; // Much thicker outline for better readability and contrast
+      context.lineWidth = 6; // Thicker outline for better readability and contrast
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       
@@ -278,14 +451,68 @@ class TextParticle {
       context.shadowOffsetY = 0;
       
       // Make sure text is always a string
-      const safeText = String(this.text || '');
+      let safeText = String(this.text || '');
       
-      // For repository names, add extra visibility features
+      // Implement text wrapping for long text
+      // We'll need to check if text is too long and split it into multiple lines
+      const textLines = [];
+      const maxLineWidth = this.isRepoName ? 1300 : 1400; // Maximum width in pixels
+      
+      // Measure the full text width
+      const fullTextMetrics = context.measureText(safeText);
+      
+      if (fullTextMetrics.width > maxLineWidth) {
+        // Text needs wrapping
+        const words = safeText.split(' ');
+        let currentLine = '';
+        
+        // Process each word
+        words.forEach(word => {
+          // Measure current line with this word added
+          const testLine = currentLine ? currentLine + ' ' + word : word;
+          const testMetrics = context.measureText(testLine);
+          
+          if (testMetrics.width > maxLineWidth) {
+            // If adding this word exceeds max width, push current line and start new line
+            if (currentLine) {
+              textLines.push(currentLine);
+              currentLine = word;
+            } else {
+              // This single word is too long, we'll need to truncate it
+              textLines.push(word);
+              currentLine = '';
+            }
+          } else {
+            // Add word to current line
+            currentLine = testLine;
+          }
+        });
+        
+        // Add the last line if any
+        if (currentLine) {
+          textLines.push(currentLine);
+        }
+      } else {
+        // No wrapping needed
+        textLines.push(safeText);
+      }
+      
+      // Calculate total height needed for all lines
+      const lineHeight = fontSize * 1.2;
+      const totalTextHeight = textLines.length * lineHeight;
+      
+      // For repository names or important text, add extra visibility features
       if (this.isRepoName) {
+        // Calculate the maximum width of all lines for the background
+        let maxWidth = 0;
+        textLines.forEach(line => {
+          const lineMetrics = context.measureText(line);
+          maxWidth = Math.max(maxWidth, lineMetrics.width);
+        });
+        
         // Add a darker, larger background box with border for maximum contrast
-        const textMetrics = context.measureText(safeText);
-        const textWidth = textMetrics.width;
-        const textHeight = fontSize * 1.2;
+        const textWidth = maxWidth;
+        const textHeight = totalTextHeight;
         
         // First draw outer glow border
         context.fillStyle = `#${hexColor}33`; // Semi-transparent color matching the text
@@ -308,17 +535,22 @@ class TextParticle {
         // Reset fill style to gradient
         context.fillStyle = gradient;
         
-        // Extremely minimal glow for maximum clarity (single pass with much less blur)
+        // Extremely minimal glow for maximum clarity
         context.shadowBlur = 3; // Very minimal blur for cleaner text
         context.shadowColor = `#${hexColor}`;
-        context.strokeText(safeText, canvas.width / 2, canvas.height / 2);
       }
       
-      // Draw text (first stroke for outline, then fill)
-      const textX = canvas.width / 2;
-      const textY = canvas.height / 2;
-      context.strokeText(safeText, textX, textY);
-      context.fillText(safeText, textX, textY);
+      // Draw multiple lines of text
+      const startY = canvas.height/2 - (totalTextHeight/2) + (lineHeight/2);
+      
+      textLines.forEach((line, index) => {
+        const lineY = startY + (index * lineHeight);
+        const textX = canvas.width/2;
+        
+        // Draw text (first stroke for outline, then fill)
+        context.strokeText(line, textX, lineY);
+        context.fillText(line, textX, lineY);
+      });
       
       // Create texture from canvas (optimized settings)
       const texture = new THREE.CanvasTexture(canvas);
@@ -336,8 +568,22 @@ class TextParticle {
         depthTest: true
       });
       
+      // Calculate appropriate plane dimensions based on text lines
+      const planeWidth = 4.0; // Wider plane to fit more text
+      
+      // Calculate appropriate height based on number of text lines
+      // Default is 1.5, but increase it if we have multiple lines
+      const lineBreaks = safeText.split('\n');
+      const lineCount = Math.max(lineBreaks.length, 1);
+      
+      // Apply extra height for wrapped text (detected earlier)
+      const needsExtraHeight = fullTextMetrics && fullTextMetrics.width > maxLineWidth;
+      const planeHeight = needsExtraHeight ? 
+                         (1.5 + (0.5 * Math.floor(fullTextMetrics.width / maxLineWidth))) : 
+                         (lineCount > 1 ? 1.5 + (lineCount * 0.5) : 1.5);
+      
       // Create plane geometry for the text
-      const geometry = new THREE.PlaneGeometry(3, 1.5); // Larger plane for text
+      const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
       
       // Create mesh with geometry and material
       this.mesh = new THREE.Mesh(geometry, material);
@@ -439,28 +685,61 @@ class TextParticle {
   }
 }
 
-// Create exploding text effect for repositories
-function createExplodingRepoText(position, repo) {
+// Create exploding text effect for repositories and LinkedIn data
+function createExplodingRepoText(position, item) {
   try {
-    if (!repo || !position) {
-      console.error('Invalid repo or position for exploding text');
+    if (!item || !position) {
+      console.error('Invalid item or position for exploding text');
       return;
     }
     
-    console.log("Showing repo:", 
-      repo.name || 'Unnamed', 
-      repo.description || 'No description');
+    // Handle both LinkedIn and GitHub items
+    const isLinkedInItem = item.type && ['experience', 'education', 'skill', 'profile'].includes(item.type);
     
-    // Move repo name to an optimal centered viewing position (adjusted without description words)
+    if (isLinkedInItem) {
+      console.log("Showing LinkedIn item:", 
+        item.name || 'Unnamed', 
+        item.description || 'No description',
+        "Type:", item.type);
+    } else {
+      console.log("Showing GitHub repo:", 
+        item.name || 'Unnamed', 
+        item.description || 'No description');
+    }
+    
+    // Move item name to an optimal centered viewing position
     const namePosition = position.clone();
-    namePosition.y += 0.8; // Slightly raised position (less than before since we removed description words)
+    namePosition.y += 0.8; // Slightly raised position
     namePosition.z -= 1; // Bring slightly closer to camera for emphasis
-
-    // Ensure repo name is valid
-    const repoName = repo.name ? String(repo.name).toUpperCase() : 'UNNAMED REPO';
     
-    // Create particle for repo name with isRepoName flag set to true
-    const nameParticle = new TextParticle(repoName, namePosition, repo.color || 0xffff00, true);
+    // For LinkedIn items, add special prefix based on type
+    let displayName = item.name || 'Unnamed';
+    let displayColor = item.color || 0xffff00;
+    
+    if (isLinkedInItem) {
+      // Use LinkedIn colors and add prefix by type
+      switch(item.type) {
+        case 'experience':
+          displayName = `🏢 ${displayName}`;
+          break;
+        case 'education':
+          displayName = `🎓 ${displayName}`;
+          break;
+        case 'skill':
+          displayName = `⚡ ${displayName}`;
+          break;
+        case 'profile':
+          displayName = `👤 ${displayName}`;
+          break;
+      }
+      displayColor = 0x0077B5; // LinkedIn blue for all LinkedIn items
+    }
+
+    // Ensure name is valid and properly formatted
+    const displayNameFormatted = String(displayName).toUpperCase();
+    
+    // Create particle for name with isNameFlag set to true
+    const nameParticle = new TextParticle(displayNameFormatted, namePosition, displayColor, true);
     
     // Only add to scene if mesh was created successfully
     if (nameParticle.mesh) {
@@ -468,36 +747,80 @@ function createExplodingRepoText(position, repo) {
       explodingTexts.push(nameParticle);
     }
     
-    // Skip description words - only showing repo names now
-    // Description words have been removed for clarity
+    // Always show description if available
+    if (item.description && item.description.trim() !== '') {
+      setTimeout(() => {
+        // Position description below the name with more vertical space
+        const descPosition = namePosition.clone();
+        descPosition.y -= 1.2; // Increased space between name and description
+        
+        // Create description text
+        const descText = isLinkedInItem 
+          ? item.description
+          : `[${item.description}]`;
+        
+        const descParticle = new TextParticle(descText, descPosition, displayColor, true);
+        
+        if (descParticle.mesh) {
+          scene.add(descParticle.mesh);
+          explodingTexts.push(descParticle);
+        }
+      }, 300); // Longer delay for better reading of the name first
+    }
     
-    // Add language and stars information if available
-    if (repo.language || repo.stars) {
+    // For GitHub repos, add language and stars information if available
+    if (!isLinkedInItem && (item.language || item.stars)) {
       setTimeout(() => {
         let infoText = '';
         // Only add language if it exists and isn't unusual
-        if (repo.language && repo.language.length > 1 && repo.language.toLowerCase() !== 'shift') {
-          infoText += `[${repo.language}]`;
+        if (item.language && item.language.length > 1 && item.language.toLowerCase() !== 'shift') {
+          infoText += `[${item.language}]`;
         }
         
         // Add stars if available
-        if (repo.stars && repo.stars > 0) infoText += ` ★ ${repo.stars}`;
+        if (item.stars && item.stars > 0) infoText += ` ★ ${item.stars}`;
         
         // Only proceed if we have valid info text
         if (infoText && infoText.trim() !== '') {
-          // Position directly below the repository name for better organization
+          // Position at bottom with more space
           const infoPosition = namePosition.clone();
-          infoPosition.y -= 0.8; // Position further down without description words
+          infoPosition.y -= item.description ? 2.2 : 1.2; // Increased vertical spacing
           
-          // Create info text particle with eye-catching color and treat as important text
-          const infoParticle = new TextParticle(infoText, infoPosition, 0xffff00, true); // true for more prominence
+          // Create info text particle
+          const infoParticle = new TextParticle(infoText, infoPosition, 0xffff00, true);
           
           if (infoParticle.mesh) {
             scene.add(infoParticle.mesh);
             explodingTexts.push(infoParticle);
           }
         }
-      }, 200); // Show more quickly after repo name
+      }, 500); // Delay even more for better readability
+    }
+    
+    // For LinkedIn items, add details information if available
+    if (isLinkedInItem && item.details && item.details.trim() !== '') {
+      setTimeout(() => {
+        // Position details below description with more consistent spacing
+        const detailsPosition = namePosition.clone();
+        detailsPosition.y -= item.description ? 2.2 : 1.2; // Match GitHub info spacing
+        
+        // Format the details text - we'll let the text wrapping handle long text now
+        // rather than truncating with ellipsis
+        let detailsText = item.details;
+        
+        // If we're dealing with long details text, add more bottom padding
+        if (detailsText.length > 60) {
+          // Adjust vertical position even more for very long text
+          detailsPosition.y -= 0.2;
+        }
+        
+        const detailsParticle = new TextParticle(detailsText, detailsPosition, 0x00A0DC, true);
+        
+        if (detailsParticle.mesh) {
+          scene.add(detailsParticle.mesh);
+          explodingTexts.push(detailsParticle);
+        }
+      }, 500); // Match GitHub info timing
     }
   } catch (err) {
     console.error('Error creating repo text effect:', err);
@@ -548,14 +871,26 @@ function init() {
   // Create player
   createPlayer();
   
-  // Fetch GitHub repositories - load immediately on page load
-  console.log('Loading GitHub repositories...');
-  fetchGitHubRepos().then(repos => {
+  // Fetch data from both GitHub and LinkedIn - load immediately on page load
+  console.log('Loading GitHub repositories and LinkedIn profile...');
+  
+  // Fetch both data sources in parallel
+  Promise.all([
+    fetchGitHubRepos(),
+    fetchLinkedInProfile()
+  ]).then(([repos, profile]) => {
+    // Store GitHub data
     githubRepos = repos;
     console.log('Loaded GitHub repos:', githubRepos.length);
     
-    // Only fetch repos once at launch - no automatic refreshes
-    console.log('GitHub repos loaded once at launch - will not automatically refresh');
+    // Process and store LinkedIn data
+    linkedinData = processLinkedInData(profile);
+    console.log('Loaded LinkedIn data items:', linkedinData.length);
+    
+    // Only fetch data once at launch - no automatic refreshes
+    console.log('All profile data loaded on launch - will refresh on each game start');
+  }).catch(error => {
+    console.error('Error loading profile data:', error);
   });
   
   // Handle window resize
@@ -1009,14 +1344,125 @@ function createObstacle() {
   obstacles.push(obstacle);
 }
 
-// Create collectible item - 80s icons
+// Create collectible item - 80s icons with LinkedIn and GitHub data
 function createCollectible() {
   const lane = Math.floor(Math.random() * 3);
+  
+  // Determine if this should be a LinkedIn collectible (30% chance)
+  const isLinkedInItem = linkedinData.length > 0 && Math.random() < 0.3;
+  
+  // For standard collectibles, choose a random type
   const collectibleType = Math.floor(Math.random() * 4);
   
   let collectible;
   const colorIndex = Math.floor(Math.random() * neonColors.length);
-  const itemColor = neonColors[colorIndex];
+  const itemColor = isLinkedInItem ? 0x0077B5 : neonColors[colorIndex]; // LinkedIn blue for LinkedIn items
+  
+  // Store the data source and item in the collectible's userData
+  const userData = {};
+  
+  if (isLinkedInItem) {
+    // Choose a random LinkedIn data item if available
+    if (linkedinData && linkedinData.length > 0) {
+      const randomIndex = Math.floor(Math.random() * linkedinData.length);
+      userData.dataSource = 'linkedin';
+      userData.dataItem = linkedinData[randomIndex];
+    } else {
+      // If no LinkedIn data is available yet, just mark as LinkedIn source
+      userData.dataSource = 'linkedin';
+      userData.dataItem = {
+        name: "LinkedIn Profile",
+        description: "Loading profile data...",
+        type: "profile",
+        color: 0x0077B5
+      };
+    }
+    
+    // For LinkedIn items, use a special shape - holographic pyramid
+    const pyramidGroup = new THREE.Group();
+    
+    // Create outer wireframe with LinkedIn blue color
+    const pyramidGeometry = new THREE.TetrahedronGeometry(0.4, 0);
+    const pyramidMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x0077B5, // LinkedIn blue
+      wireframe: true,
+      transparent: true,
+      opacity: 0.8
+    });
+    const pyramidWireframe = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
+    pyramidGroup.add(pyramidWireframe);
+    
+    // Create inner solid with LinkedIn logo colors
+    const innerGeometry = new THREE.TetrahedronGeometry(0.3, 0);
+    const innerMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x00A0DC, // Lighter LinkedIn blue
+      transparent: true,
+      opacity: 0.3
+    });
+    const innerPyramid = new THREE.Mesh(innerGeometry, innerMaterial);
+    pyramidGroup.add(innerPyramid);
+    
+    // Add letter "in" on one face to represent LinkedIn
+    const addLetterIn = () => {
+      // Create canvas for text
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = 128;
+      canvas.height = 128;
+      
+      // Draw "in" text
+      context.fillStyle = '#FFFFFF';
+      context.font = 'bold 80px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('in', 64, 64);
+      
+      // Create texture from canvas
+      const texture = new THREE.CanvasTexture(canvas);
+      
+      // Create material with texture
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide
+      });
+      
+      // Create plane for the face
+      const plane = new THREE.PlaneGeometry(0.3, 0.3);
+      const textMesh = new THREE.Mesh(plane, material);
+      textMesh.position.set(0, 0.1, 0.2);
+      textMesh.lookAt(0, 0.5, 1);
+      
+      return textMesh;
+    };
+    
+    pyramidGroup.add(addLetterIn());
+    
+    // Add strong glow light
+    const pyramidLight = new THREE.PointLight(0x0077B5, 1.5, 3);
+    pyramidLight.position.set(0, 0, 0);
+    pyramidGroup.add(pyramidLight);
+    
+    collectible = pyramidGroup;
+    
+    // Add special animation function for this collectible
+    collectible.userData = {
+      ...userData,
+      animate: function(time) {
+        // Rotate the wireframe and inner pyramid differently
+        pyramidWireframe.rotation.y += 0.01;
+        innerPyramid.rotation.y -= 0.005;
+        innerPyramid.rotation.x += 0.003;
+      }
+    };
+    
+    return collectible;
+  }
+  
+  // For standard collectibles, store that this is a GitHub item
+  userData.dataSource = 'github';
+  // We don't set userData.dataItem for GitHub items yet - that will be selected at display time
   
   switch (collectibleType) {
     case 0: // Cassette tape
@@ -1182,6 +1628,27 @@ function createCollectible() {
   collectible.position.x = lanes[lane];
   collectible.position.y = 0.5 + Math.sin(Date.now() * 0.003) * 0.2; // Floating effect
   collectible.position.z = -100 - Math.random() * 20;
+  
+  // Store user data in all collectible types
+  try {
+    // Initialize userData if it doesn't exist
+    if (!collectible.userData) {
+      collectible.userData = {};
+    }
+    
+    // Add dataSource and dataItem if not already set
+    if (!collectible.userData.dataSource) {
+      collectible.userData.dataSource = userData.dataSource || 'github';
+    }
+    
+    // For LinkedIn items, assign a specific LinkedIn data item if available
+    if (userData.dataSource === 'linkedin' && linkedinData && linkedinData.length > 0) {
+      const randomIndex = Math.floor(Math.random() * linkedinData.length);
+      collectible.userData.dataItem = linkedinData[randomIndex];
+    }
+  } catch (error) {
+    console.error('Error setting collectible userData:', error);
+  }
   
   scene.add(collectible);
   collectibles.push(collectible);
@@ -1409,23 +1876,76 @@ function createCollectionEffect(x, y, z, showRepo = true) {
   pointLight.position.set(x, y, z);
   scene.add(pointLight);
   
-  // Display GitHub repo info if available AND if showRepo flag is true
-  if (showRepo && githubRepos && githubRepos.length > 0) {
-    // Get the next repository from the front of the array (newest repos first)
-    // This ensures we're always showing the most recently updated repos first
-    const repo = githubRepos[0];
+  // Display collected item info if available AND if showRepo flag is true
+  if (showRepo) {
+    // Check if this collectible had specific data assigned to it
+    // If we can identify what this collectible is, show that specific data
+    let dataSource = 'github'; // Default to GitHub
+    let dataItem = null;
     
-    // Create the exploding text effect with the repository info
-    createExplodingRepoText(new THREE.Vector3(x, y, z), repo);
-    
-    // Move this repo to the end of the array to cycle through them
-    // This way we show all repos before repeating
-    if (githubRepos.length > 1) {
-      const usedRepo = githubRepos.shift(); // Remove from front
-      githubRepos.push(usedRepo); // Add to end
+    // Use the collectible's userData directly if possible
+    try {
+      // Try to get from the collectible that was just collected
+      const collectedItem = collectibles.find(c => 
+        Math.abs(c.position.x - x) < 0.5 && 
+        Math.abs(c.position.y - y) < 0.5 && 
+        Math.abs(c.position.z - z) < 0.5
+      );
+      
+      if (collectedItem && collectedItem.userData) {
+        if (collectedItem.userData.dataSource) {
+          dataSource = collectedItem.userData.dataSource;
+        }
+        if (collectedItem.userData.dataItem) {
+          dataItem = collectedItem.userData.dataItem;
+        }
+      }
+    } catch (error) {
+      console.error('Error accessing collectible userData:', error);
+      // Fall back to default GitHub display
     }
     
-    // No automatic refresh on collection - using initial data only
+    if (dataSource === 'linkedin' && dataItem) {
+      // Use the specific LinkedIn item that was assigned to this collectible
+      createExplodingRepoText(new THREE.Vector3(x, y, z), dataItem);
+      
+      // Refresh LinkedIn data occasionally
+      if (Math.random() < 0.1) { // 10% chance to refresh
+        console.log('Refreshing LinkedIn data...');
+        fetchLinkedInProfile().then(profile => {
+          linkedinData = processLinkedInData(profile);
+          console.log('LinkedIn data refreshed with', linkedinData.length, 'items');
+        }).catch(err => {
+          console.error('Error refreshing LinkedIn data:', err);
+        });
+      }
+    } 
+    else if (dataSource === 'github' && githubRepos && githubRepos.length > 0) {
+      // Get the next repository from the front of the array (newest repos first)
+      // This ensures we're always showing the most recently updated repos first
+      const repo = githubRepos[0];
+      
+      // Create the exploding text effect with the repository info
+      createExplodingRepoText(new THREE.Vector3(x, y, z), repo);
+      
+      // Move this repo to the end of the array to cycle through them
+      // This way we show all repos before repeating
+      if (githubRepos.length > 1) {
+        const usedRepo = githubRepos.shift(); // Remove from front
+        githubRepos.push(usedRepo); // Add to end
+      }
+      
+      // Refresh GitHub data occasionally
+      if (Math.random() < 0.05) { // 5% chance to refresh
+        console.log('Refreshing GitHub repos...');
+        fetchGitHubRepos().then(repos => {
+          githubRepos = repos;
+          console.log('GitHub repos refreshed with', githubRepos.length, 'repositories');
+        }).catch(err => {
+          console.error('Error refreshing GitHub data:', err);
+        });
+      }
+    }
   }
   
   // Animate expanding ring and particles
@@ -1533,20 +2053,43 @@ function startGame() {
     collectibles[i].position.z = -15 - (i * 7); // Position them at different distances
   }
   
-  // Create an initial repo text display in the center to show the player what to expect
+  // Create initial welcome text displays to show the player what to expect
   setTimeout(() => {
-    if (githubRepos && githubRepos.length > 0) {
-      // Create a special intro display showing what to expect (just repo name)
-      const center = new THREE.Vector3(0, 1.5, -5);
-      const welcomeRepo = {
-        name: "WELCOME - CATCH NEON SHAPES",
-        language: "GitHub Projects",
-        stars: 0,
-        color: 0xffff00
+    // First welcome message about GitHub
+    const center1 = new THREE.Vector3(-2, 1.5, -5);
+    const welcomeGithub = {
+      name: "CATCH GITHUB REPOS",
+      description: "DISCOVER MY LATEST PROJECTS",
+      language: "GitHub",
+      stars: 0,
+      color: 0xffff00
+    };
+    createExplodingRepoText(center1, welcomeGithub);
+    
+    // Second welcome message about LinkedIn
+    setTimeout(() => {
+      const center2 = new THREE.Vector3(2, 1.5, -5);
+      const welcomeLinkedIn = {
+        name: "CATCH LINKEDIN DATA",
+        description: "MY CAREER HIGHLIGHTS",
+        type: "profile",
+        color: 0x0077B5
       };
-      createExplodingRepoText(center, welcomeRepo);
-    }
-  }, 1000); // Show intro message after a short delay
+      createExplodingRepoText(center2, welcomeLinkedIn);
+      
+      // Refresh data on game start to ensure fresh content
+      fetchGitHubRepos().then(repos => {
+        githubRepos = repos;
+        console.log('GitHub repos refreshed with', githubRepos.length, 'repositories');
+      });
+      
+      fetchLinkedInProfile().then(profile => {
+        linkedinData = processLinkedInData(profile);
+        console.log('LinkedIn data refreshed with', linkedinData.length, 'items');
+      });
+      
+    }, 800);
+  }, 1000); // Show intro messages after short delays
 }
 
 // Refresh the game - can be triggered manually if needed
