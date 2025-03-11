@@ -2,59 +2,1122 @@
 layout: default
 ---
 
-<div class="home">  
-  <img src="/assets/avatar.jpg" style="float:right">
-  Hi, I'm PJ.  I write apps for iOS and macOS.<br><br>
-  During the week, I work at <a href="https://www.evertrue.com">EverTrue</a>, writing iOS applications.<br><br>
-  Say Goodnight Software is how I release side project applications.<br><br>
-  <ul>
-  <li>OpenPics - Search for images from multiple online image collections. (<a href="https://github.com/pj4533/OpenPics">open source</a>)</li>
-  </ul>
-  Need iOS or macOS work done? <a href="mailto:pj4533@gmail.com?subject=iOS Contract Work">Contact me</a>!<br>
-  <br>
-  <br>
-  <h1 class="page-heading">Blog Posts</h1>
-
-  <ul class="post-list">
-    <li>
-      <span class="post-meta">Apr 14, 2019</span>
-
-      <h2>
-        <a class="post-link" href="https://medium.com/@pj4533/dutchess-county-2017-local-election-infographic-94b11abda9e2">Dutchess County 2017 Local Election Infographic</a>
-      </h2>
-    </li>
-    <li>
-      <span class="post-meta">Apr 13, 2019</span>
-
-      <h2>
-        <a class="post-link" href="https://medium.com/@pj4533/using-public-property-tax-records-to-increase-voter-registration-bf967f0063d9">Using Public Property Tax Records To Increase Voter Registration</a>
-      </h2>
-    </li>
-    <li>
-      <span class="post-meta">Apr 12, 2019</span>
-
-      <h2>
-        <a class="post-link" href="https://medium.com/@pj4533/identifying-pambunt-voters-presidential-and-mid-terms-but-unfortunately-not-town-board-d49afb47730c">Identifying PAMBUNT Voters: Presidential And Mid-terms, But Unfortunately Not Town board</a>
-      </h2>
-    </li>
-    <li>
-      <span class="post-meta">Apr 10, 2019</span>
-
-      <h2>
-        <a class="post-link" href="https://medium.com/@pj4533/small-town-politics-loading-board-of-elections-data-656887b5d6e2">Small Town Politics: Loading Board Of Elections Data</a>
-      </h2>
-    </li>
-    {% for post in site.posts %}
-      <li>
-        <span class="post-meta">{{ post.date | date: "%b %-d, %Y" }}</span>
-
-        <h2>
-          <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
-        </h2>
-      </li>
-    {% endfor %}
-  </ul>
-
-  <p class="rss-subscribe">subscribe <a href="{{ "/feed.xml" | prepend: site.baseurl }}">via RSS</a></p>
-
+<div class="home">
+  <h1 class="simple-intro">hi, i'm pj. i like to code</h1>
+  
+  <div id="game-container">
+    <div id="game-canvas"></div>
+    <div id="game-ui">
+      <div id="score">Score: 0</div>
+      <div id="instructions">
+        ← → to move left/right <br>
+        Catch the neon shapes <br>
+        Avoid the glitchy ones
+      </div>
+    </div>
+    <div id="game-overlay">
+      <div id="start-screen" class="overlay-screen">
+        <div class="logo">NEON WAVE</div>
+        <div class="start-button">PRESS SPACE TO START</div>
+      </div>
+      <div id="game-over-screen" class="overlay-screen hidden">
+        <div class="game-over-text">GAME OVER</div>
+        <div class="final-score">Score: 0</div>
+        <div class="high-score">HIGH SCORE: 0</div>
+        <div class="restart-button">PRESS SPACE TO RESTART</div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+// Game variables
+let scene, camera, renderer, player;
+let gameStarted = false;
+let gameOver = false;
+let score = 0;
+let highScore = 0;
+let speed = 0.2;
+let obstacles = [];
+let collectibles = [];
+let level = 1;
+let playerSize = 0.6;
+let lanes = [-2, 0, 2];
+let currentLane = 1; // Center lane (0)
+let animationId;
+let gridHelper;
+let sunGeometry;
+let sun;
+let stars = [];
+let neonColors = [0x00ffff, 0xff00ff, 0xffff00, 0xff0099, 0x00ff99];
+
+// Initialize the game
+function init() {
+  // Create scene
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+  
+  // Add fog for depth effect - purple fog for 80s vibe
+  scene.fog = new THREE.Fog(0x110022, 8, 35);
+  
+  // Create camera
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 1.5, 5);
+  camera.lookAt(0, 0, -10);
+  
+  // Create renderer with post-processing effects
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('game-canvas').appendChild(renderer.domElement);
+  
+  // Add lights
+  const ambientLight = new THREE.AmbientLight(0x222222);
+  scene.add(ambientLight);
+  
+  // Add point lights for neon effect
+  const blueLight = new THREE.PointLight(0x00ffff, 1, 50);
+  blueLight.position.set(-10, 15, -30);
+  scene.add(blueLight);
+  
+  const pinkLight = new THREE.PointLight(0xff00ff, 1, 50);
+  pinkLight.position.set(10, 15, -10);
+  scene.add(pinkLight);
+  
+  // Create starfield backdrop
+  createStarfield();
+  
+  // Create retro sun
+  createRetroCyberpunkSun();
+  
+  // Create track
+  createTrack();
+  
+  // Create player
+  createPlayer();
+  
+  // Handle window resize
+  window.addEventListener('resize', onWindowResize, false);
+  
+  // Add key events listener
+  document.addEventListener('keydown', handleKeyDown);
+  
+  // Initial UI setup
+  updateScore(0);
+  
+  // Check local storage for high score
+  if (localStorage.getItem('neonWaveHighScore')) {
+    highScore = parseInt(localStorage.getItem('neonWaveHighScore'));
+    document.querySelector('.high-score').innerHTML = 'HIGH SCORE: ' + highScore;
+  }
+  
+  // Start animation loop
+  animate();
+}
+
+// Handle keyboard input
+function handleKeyDown(event) {
+  // Prevent default action for arrow keys and space
+  if (event.key === ' ' || 
+      event.key === 'ArrowLeft' || 
+      event.key === 'ArrowRight' || 
+      event.key === 'ArrowUp' || 
+      event.key === 'ArrowDown') {
+    event.preventDefault();
+  }
+  
+  // Handle spacebar for game start/restart
+  if (event.key === ' ') {
+    if (gameOver) {
+      restartGame();
+      return;
+    }
+    
+    if (!gameStarted) {
+      startGame();
+      return;
+    }
+  }
+  
+  // Only handle movement if game is active
+  if (!gameStarted || gameOver) return;
+  
+  // Handle movement with arrow keys
+  if (event.key === 'ArrowLeft') {
+    if (currentLane > 0) {
+      currentLane--;
+      player.rotation.z = 0.2;
+      setTimeout(() => {
+        if (player) player.rotation.z = 0;
+      }, 200);
+    }
+  } else if (event.key === 'ArrowRight') {
+    if (currentLane < 2) {
+      currentLane++;
+      player.rotation.z = -0.2;
+      setTimeout(() => {
+        if (player) player.rotation.z = 0;
+      }, 200);
+    }
+  }
+}
+
+// Create starfield backdrop
+function createStarfield() {
+  const starGeometry = new THREE.BufferGeometry();
+  const starMaterial = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 0.1,
+  });
+  
+  const starVertices = [];
+  for (let i = 0; i < 1000; i++) {
+    const x = (Math.random() - 0.5) * 100;
+    const y = (Math.random() - 0.5) * 100;
+    const z = -Math.random() * 100;
+    starVertices.push(x, y, z);
+  }
+  
+  starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+  stars = new THREE.Points(starGeometry, starMaterial);
+  scene.add(stars);
+}
+
+// Create a retro cyberpunk sun
+function createRetroCyberpunkSun() {
+  // Create the sun circle
+  sunGeometry = new THREE.CircleGeometry(10, 32);
+  const sunMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff00ff,
+    side: THREE.DoubleSide,
+    wireframe: true,
+  });
+  
+  sun = new THREE.Mesh(sunGeometry, sunMaterial);
+  sun.position.z = -50;
+  sun.position.y = 15;
+  scene.add(sun);
+  
+  // Create concentric circles for retro sun effect
+  for (let i = 1; i < 5; i++) {
+    const ringGeometry = new THREE.RingGeometry(i * 2, i * 2 + 0.1, 32);
+    const ringMaterial = new THREE.MeshBasicMaterial({
+      color: i % 2 === 0 ? 0x00ffff : 0xff00ff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.7
+    });
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+    ring.position.z = -50;
+    ring.position.y = 15;
+    scene.add(ring);
+  }
+}
+
+// Create the game track
+function createTrack() {
+  // Main track is dark with grid lines
+  const trackGeometry = new THREE.PlaneGeometry(10, 1000);
+  const trackMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0x000000,
+    wireframe: false
+  });
+  const track = new THREE.Mesh(trackGeometry, trackMaterial);
+  track.rotation.x = -Math.PI / 2;
+  track.position.z = -500;
+  scene.add(track);
+  
+  // Add 80s-style neon grid lines
+  gridHelper = new THREE.GridHelper(100, 50, 0xff00ff, 0x00ffff);
+  gridHelper.position.y = 0.01;
+  gridHelper.position.z = -500;
+  scene.add(gridHelper);
+  
+  // Add lane markers
+  for (let lane of lanes) {
+    const markerGeometry = new THREE.PlaneGeometry(0.1, 1000);
+    const markerMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.5
+    });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.x = lane;
+    marker.position.y = 0.01;
+    marker.position.z = -500;
+    marker.rotation.x = -Math.PI / 2;
+    scene.add(marker);
+  }
+  
+  // Add side barriers with neon effect
+  const leftBarrierGeometry = new THREE.BoxGeometry(0.2, 0.5, 1000);
+  const rightBarrierGeometry = new THREE.BoxGeometry(0.2, 0.5, 1000);
+  
+  const leftBarrierMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+  const rightBarrierMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+  
+  const leftBarrier = new THREE.Mesh(leftBarrierGeometry, leftBarrierMaterial);
+  const rightBarrier = new THREE.Mesh(rightBarrierGeometry, rightBarrierMaterial);
+  
+  leftBarrier.position.x = -5.1;
+  leftBarrier.position.y = 0.25;
+  leftBarrier.position.z = -500;
+  
+  rightBarrier.position.x = 5.1;
+  rightBarrier.position.y = 0.25;
+  rightBarrier.position.z = -500;
+  
+  scene.add(leftBarrier);
+  scene.add(rightBarrier);
+}
+
+// Create player - 80s style car
+function createPlayer() {
+  // Create car body
+  const carGroup = new THREE.Group();
+  
+  // Main body - neon colored hovercar
+  const bodyGeometry = new THREE.BoxGeometry(playerSize + 0.1, playerSize / 2, playerSize + 0.3);
+  const bodyMaterial = new THREE.MeshLambertMaterial({ 
+    color: 0x00ffff,
+    emissive: 0x00ffff,
+    emissiveIntensity: 0.5
+  });
+  const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+  carGroup.add(body);
+  
+  // Top part
+  const topGeometry = new THREE.BoxGeometry(playerSize - 0.1, playerSize / 3, playerSize - 0.1);
+  const topMaterial = new THREE.MeshLambertMaterial({ 
+    color: 0x0000ff,
+    emissive: 0x0000ff,
+    emissiveIntensity: 0.2
+  });
+  const top = new THREE.Mesh(topGeometry, topMaterial);
+  top.position.y = 0.25;
+  carGroup.add(top);
+  
+  // Add lights for the car
+  const frontLightGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+  const frontLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+  
+  const leftLight = new THREE.Mesh(frontLightGeometry, frontLightMaterial);
+  leftLight.position.set(-0.2, 0, 0.3);
+  carGroup.add(leftLight);
+  
+  const rightLight = new THREE.Mesh(frontLightGeometry, frontLightMaterial);
+  rightLight.position.set(0.2, 0, 0.3);
+  carGroup.add(rightLight);
+  
+  // Add neon glow
+  const playerLight = new THREE.PointLight(0x00ffff, 1, 3);
+  playerLight.position.set(0, 0.5, 0);
+  carGroup.add(playerLight);
+  
+  // Position the whole car
+  carGroup.position.y = playerSize / 2;
+  carGroup.position.z = 0;
+  carGroup.position.x = lanes[currentLane];
+  
+  player = carGroup;
+  scene.add(player);
+}
+
+// Create obstacles - glitchy retro objects
+function createObstacle() {
+  const lane = Math.floor(Math.random() * 3);
+  const obstacleType = Math.floor(Math.random() * 3);
+  let obstacle;
+  
+  switch (obstacleType) {
+    case 0: // Glitchy cube
+      const cubeGroup = new THREE.Group();
+      
+      // Main glitchy cube
+      const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const cubeMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.9
+      });
+      const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+      cubeGroup.add(cube);
+      
+      // Add glitching effect with multiple frames that randomly display
+      for (let i = 0; i < 3; i++) {
+        const glitchFrame = new THREE.Mesh(
+          new THREE.BoxGeometry(1.2, 1.2, 1.2),
+          new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.3
+          })
+        );
+        glitchFrame.visible = false;
+        cubeGroup.add(glitchFrame);
+      }
+      
+      // Add intense red glow
+      const cubeLight = new THREE.PointLight(0xff0000, 1, 3);
+      cubeLight.position.set(0, 0, 0);
+      cubeGroup.add(cubeLight);
+      
+      // Set up glitching animation
+      setInterval(() => {
+        if (cubeGroup.parent) {  // Check if still in the scene
+          // Randomly show/hide glitch frames
+          cubeGroup.children.forEach((child, index) => {
+            if (index > 0 && index < 4) { // Skip the main cube and light
+              child.visible = Math.random() > 0.7;
+              child.rotation.x = Math.random() * Math.PI;
+              child.rotation.z = Math.random() * Math.PI;
+            }
+          });
+          
+          // Randomly scale the main cube
+          cube.scale.set(
+            0.8 + Math.random() * 0.4,
+            0.8 + Math.random() * 0.4,
+            0.8 + Math.random() * 0.4
+          );
+        }
+      }, 80);
+      
+      obstacle = cubeGroup;
+      break;
+      
+    case 1: // VHS static-like noise
+      const noiseGroup = new THREE.Group();
+      
+      // Create multiple glitchy planes
+      for (let i = 0; i < 5; i++) {
+        const noiseGeometry = new THREE.BoxGeometry(1.2, 0.1, 0.6);
+        const noiseColor = (i % 2 === 0) ? 0xff3333 : 0xff0000;
+        const noiseMaterial = new THREE.MeshLambertMaterial({ 
+          color: noiseColor,
+          emissive: noiseColor,
+          emissiveIntensity: 0.9,
+          transparent: true,
+          opacity: 0.9
+        });
+        const noisePlane = new THREE.Mesh(noiseGeometry, noiseMaterial);
+        noisePlane.position.y = -0.25 + (i * 0.1);
+        noiseGroup.add(noisePlane);
+      }
+      
+      // Add intense red warning light
+      const noiseLight = new THREE.PointLight(0xff0000, 1.5, 4);
+      noiseLight.position.set(0, 0, 0);
+      noiseGroup.add(noiseLight);
+      
+      // Set up glitching
+      setInterval(() => {
+        if (noiseGroup.parent) {  // Check if still in the scene
+          noiseGroup.children.forEach((child, index) => {
+            if (index < 5) { // Only affect the planes, not the light
+              // Randomly change opacity and position
+              child.material.opacity = 0.7 + Math.random() * 0.3;
+              child.position.x = (Math.random() - 0.5) * 0.3;
+              child.position.y = -0.25 + (index * 0.1) + (Math.random() - 0.5) * 0.1;
+              child.scale.x = 0.8 + Math.random() * 0.5;
+            }
+          });
+        }
+      }, 50);
+      
+      obstacle = noiseGroup;
+      break;
+      
+    case 2: // Computer virus symbol
+      const virusGroup = new THREE.Group();
+      
+      // Create multiple tetrahedrons that overlap
+      for (let i = 0; i < 3; i++) {
+        const baseGeometry = new THREE.TetrahedronGeometry(0.6, 0);
+        const baseMaterial = new THREE.MeshBasicMaterial({ 
+          color: 0xff0000,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.8
+        });
+        const baseShape = new THREE.Mesh(baseGeometry, baseMaterial);
+        baseShape.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        );
+        virusGroup.add(baseShape);
+      }
+      
+      // Add flashing sphere in center
+      const sphereGeometry = new THREE.SphereGeometry(0.4, 8, 8);
+      const sphereMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.7
+      });
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      virusGroup.add(sphere);
+      
+      // Stronger red warning light
+      const warning = new THREE.PointLight(0xff0000, 2, 5);
+      warning.position.set(0, 0, 0);
+      virusGroup.add(warning);
+      
+      // Set up pulsing animation
+      setInterval(() => {
+        if (virusGroup.parent) {
+          // Flash the sphere
+          sphere.material.opacity = 0.4 + Math.random() * 0.6;
+          sphere.scale.set(
+            0.8 + Math.random() * 0.5,
+            0.8 + Math.random() * 0.5,
+            0.8 + Math.random() * 0.5
+          );
+          
+          // Rotate the tetrahedrons randomly
+          virusGroup.children.forEach((child, index) => {
+            if (index < 3) { // Only affect the tetrahedrons
+              child.rotation.x += (Math.random() - 0.5) * 0.2;
+              child.rotation.z += (Math.random() - 0.5) * 0.2;
+            }
+          });
+        }
+      }, 100);
+      
+      obstacle = virusGroup;
+      break;
+  }
+  
+  // Position the obstacle
+  obstacle.position.x = lanes[lane];
+  obstacle.position.y = 0.5;
+  obstacle.position.z = -100;
+  obstacle.scale.set(1.2, 1.2, 1.2);
+  
+  scene.add(obstacle);
+  obstacles.push(obstacle);
+}
+
+// Create collectible item - 80s icons
+function createCollectible() {
+  const lane = Math.floor(Math.random() * 3);
+  const collectibleType = Math.floor(Math.random() * 4);
+  
+  let collectible;
+  const colorIndex = Math.floor(Math.random() * neonColors.length);
+  const itemColor = neonColors[colorIndex];
+  
+  switch (collectibleType) {
+    case 0: // Cassette tape
+      const cassetteGroup = new THREE.Group();
+      
+      // Create cassette body
+      const tapeBody = new THREE.BoxGeometry(0.6, 0.1, 0.4);
+      const tapeMaterial = new THREE.MeshBasicMaterial({ 
+        color: itemColor,
+        emissive: itemColor
+      });
+      const tape = new THREE.Mesh(tapeBody, tapeMaterial);
+      cassetteGroup.add(tape);
+      
+      // Add cassette label
+      const labelGeometry = new THREE.BoxGeometry(0.4, 0.01, 0.25);
+      const labelMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const label = new THREE.Mesh(labelGeometry, labelMaterial);
+      label.position.y = 0.06;
+      cassetteGroup.add(label);
+      
+      // Add cassette holes
+      const holeGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.12, 8);
+      const holeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      
+      const hole1 = new THREE.Mesh(holeGeometry, holeMaterial);
+      hole1.rotation.z = Math.PI / 2;
+      hole1.position.set(-0.15, 0, 0.2);
+      cassetteGroup.add(hole1);
+      
+      const hole2 = new THREE.Mesh(holeGeometry, holeMaterial);
+      hole2.rotation.z = Math.PI / 2;
+      hole2.position.set(0.15, 0, 0.2);
+      cassetteGroup.add(hole2);
+      
+      // Add neon glow
+      const tapeLight = new THREE.PointLight(itemColor, 1, 2);
+      tapeLight.position.set(0, 0, 0);
+      cassetteGroup.add(tapeLight);
+      
+      collectible = cassetteGroup;
+      break;
+      
+    case 1: // Retro game controller
+      const controllerGroup = new THREE.Group();
+      
+      // Controller body
+      const controllerGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.4);
+      const controllerMaterial = new THREE.MeshBasicMaterial({ 
+        color: itemColor,
+        emissive: itemColor
+      });
+      const controller = new THREE.Mesh(controllerGeometry, controllerMaterial);
+      controllerGroup.add(controller);
+      
+      // D-pad
+      const dpadBaseGeometry = new THREE.BoxGeometry(0.18, 0.02, 0.18);
+      const dpadBaseMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
+      const dpadBase = new THREE.Mesh(dpadBaseGeometry, dpadBaseMaterial);
+      dpadBase.position.set(-0.2, 0.06, 0);
+      controllerGroup.add(dpadBase);
+      
+      // Action buttons
+      const buttonGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.02, 16);
+      const buttonMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      
+      const button1 = new THREE.Mesh(buttonGeometry, buttonMaterial);
+      button1.rotation.x = Math.PI / 2;
+      button1.position.set(0.15, 0.06, -0.05);
+      controllerGroup.add(button1);
+      
+      const button2 = new THREE.Mesh(buttonGeometry, new THREE.MeshBasicMaterial({ color: 0x0000ff }));
+      button2.rotation.x = Math.PI / 2;
+      button2.position.set(0.25, 0.06, -0.05);
+      controllerGroup.add(button2);
+      
+      // Add controller light
+      const controllerLight = new THREE.PointLight(itemColor, 1, 2);
+      controllerLight.position.set(0, 0.1, 0);
+      controllerGroup.add(controllerLight);
+      
+      collectible = controllerGroup;
+      break;
+      
+    case 2: // Vinyl record
+      const recordGroup = new THREE.Group();
+      
+      // Main record disk
+      const recordGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.02, 32);
+      const recordMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
+      const record = new THREE.Mesh(recordGeometry, recordMaterial);
+      record.rotation.x = Math.PI / 2;
+      recordGroup.add(record);
+      
+      // Add record label in the center
+      const labelRadius = 0.1;
+      const recordLabelGeometry = new THREE.CylinderGeometry(labelRadius, labelRadius, 0.025, 32);
+      const recordLabelMaterial = new THREE.MeshBasicMaterial({ color: itemColor });
+      const recordLabel = new THREE.Mesh(recordLabelGeometry, recordLabelMaterial);
+      recordLabel.rotation.x = Math.PI / 2;
+      recordLabel.position.z = 0.003;
+      recordGroup.add(recordLabel);
+      
+      // Add center hole
+      const holeGeometry2 = new THREE.CylinderGeometry(0.02, 0.02, 0.03, 16);
+      const holeMaterial2 = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const hole = new THREE.Mesh(holeGeometry2, holeMaterial2);
+      hole.rotation.x = Math.PI / 2;
+      recordGroup.add(hole);
+      
+      // Add neon reflection/glow
+      const recordLight = new THREE.PointLight(itemColor, 1.5, 3);
+      recordLight.position.set(0, 0, 0);
+      recordGroup.add(recordLight);
+      
+      collectible = recordGroup;
+      break;
+      
+    case 3: // Holographic pyramid
+      const pyramidGroup = new THREE.Group();
+      
+      // Create outer wireframe
+      const pyramidGeometry = new THREE.TetrahedronGeometry(0.4, 0);
+      const pyramidMaterial = new THREE.MeshBasicMaterial({ 
+        color: itemColor,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.8
+      });
+      const pyramidWireframe = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
+      pyramidGroup.add(pyramidWireframe);
+      
+      // Create inner solid with holographic effect
+      const innerGeometry = new THREE.TetrahedronGeometry(0.3, 0);
+      const innerMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.3
+      });
+      const innerPyramid = new THREE.Mesh(innerGeometry, innerMaterial);
+      pyramidGroup.add(innerPyramid);
+      
+      // Add strong glow light
+      const pyramidLight = new THREE.PointLight(itemColor, 1.5, 3);
+      pyramidLight.position.set(0, 0, 0);
+      pyramidGroup.add(pyramidLight);
+      
+      collectible = pyramidGroup;
+      
+      // Add special animation function for this collectible
+      collectible.userData = {
+        animate: function(time) {
+          // Rotate the wireframe and inner pyramid differently
+          pyramidWireframe.rotation.y += 0.01;
+          innerPyramid.rotation.y -= 0.005;
+          innerPyramid.rotation.x += 0.003;
+        }
+      };
+      break;
+  }
+  
+  // Position the collectible
+  collectible.position.x = lanes[lane];
+  collectible.position.y = 0.5 + Math.sin(Date.now() * 0.003) * 0.2; // Floating effect
+  collectible.position.z = -100 - Math.random() * 20;
+  
+  scene.add(collectible);
+  collectibles.push(collectible);
+}
+
+// Handle window resize
+function onWindowResize() {
+  // Update camera aspect ratio
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  
+  // Resize renderer
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  
+  // Re-position UI elements if needed
+  if (window.innerHeight < 500) {
+    // Adjust for small screens
+    document.getElementById('instructions').style.display = 'none';
+  } else {
+    document.getElementById('instructions').style.display = 'block';
+  }
+}
+
+// Update game score
+function updateScore(newScore) {
+  score = newScore;
+  document.getElementById('score').innerHTML = 'Score: ' + score;
+  document.querySelector('.final-score').innerHTML = 'Score: ' + score;
+  
+  // Update high score if needed
+  if (score > highScore) {
+    highScore = score;
+    document.querySelector('.high-score').innerHTML = 'HIGH SCORE: ' + highScore;
+    localStorage.setItem('neonWaveHighScore', highScore);
+  }
+}
+
+// Check collisions
+function checkCollisions() {
+  // Check obstacle collisions
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const obstacle = obstacles[i];
+    
+    // Check if obstacle is too far behind
+    if (obstacle.position.z > 10) {
+      scene.remove(obstacle);
+      obstacles.splice(i, 1);
+      continue;
+    }
+    
+    // Check for collision with player
+    const distance = player.position.distanceTo(obstacle.position);
+    if (distance < playerSize + 0.3) {
+      // Create explosion effect
+      createExplosion(player.position.x, player.position.y, player.position.z);
+      
+      // Play glitch animation on game over screen
+      gameOver = true;
+      showGameOver();
+      return;
+    }
+  }
+  
+  // Check collectible collisions
+  for (let i = collectibles.length - 1; i >= 0; i--) {
+    const collectible = collectibles[i];
+    
+    // Check if collectible is too far behind
+    if (collectible.position.z > 10) {
+      scene.remove(collectible);
+      collectibles.splice(i, 1);
+      continue;
+    }
+    
+    // Check for collectible pickup
+    const distance = player.position.distanceTo(collectible.position);
+    if (distance < playerSize + 0.7) {
+      // Create collection effect
+      createCollectionEffect(collectible.position.x, collectible.position.y, collectible.position.z);
+      
+      // Different scores for different collectible types
+      let points = 0;
+      if (collectible.children[0].geometry.type === 'CylinderGeometry') {
+        // Vinyl records worth more
+        points = 25;
+      } else if (collectible.children[0].geometry.type === 'TetrahedronGeometry') {
+        // Wireframe pyramids worth the most
+        points = 35;
+      } else {
+        // Other items
+        points = 20;
+      }
+      
+      updateScore(score + points);
+      scene.remove(collectible);
+      collectibles.splice(i, 1);
+      
+      // Speed up game slightly
+      speed += 0.01;
+      
+      // Level up every 100 points
+      if (score % 100 === 0) {
+        level++;
+        // Flash the grid when leveling up
+        flashGrid();
+      }
+    }
+  }
+}
+
+// Create explosion effect when player hits obstacle
+function createExplosion(x, y, z) {
+  const particleCount = 30;
+  const particles = [];
+  
+  for (let i = 0; i < particleCount; i++) {
+    const particle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.1, 0.1),
+      new THREE.MeshBasicMaterial({
+        color: Math.random() > 0.5 ? 0xff0000 : 0xff00ff,
+        transparent: true,
+        opacity: 1
+      })
+    );
+    
+    particle.position.set(x, y, z);
+    particle.velocity = {
+      x: (Math.random() - 0.5) * 0.2,
+      y: (Math.random() - 0.5) * 0.2,
+      z: (Math.random() - 0.5) * 0.2
+    };
+    
+    scene.add(particle);
+    particles.push(particle);
+  }
+  
+  // Animate particles
+  const animateParticles = () => {
+    if (gameOver) {
+      particles.forEach(particle => {
+        particle.position.x += particle.velocity.x;
+        particle.position.y += particle.velocity.y;
+        particle.position.z += particle.velocity.z;
+        
+        particle.material.opacity -= 0.02;
+        
+        if (particle.material.opacity <= 0) {
+          scene.remove(particle);
+        }
+      });
+      
+      requestAnimationFrame(animateParticles);
+    }
+  };
+  
+  animateParticles();
+}
+
+// Create collection effect when player picks up collectible
+function createCollectionEffect(x, y, z) {
+  // Create expanding ring
+  const ringGeometry = new THREE.RingGeometry(0.1, 0.15, 32);
+  const ringMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ffff,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 1
+  });
+  
+  const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+  ring.position.set(x, y, z);
+  ring.rotation.y = Math.PI / 2;
+  scene.add(ring);
+  
+  // Create particles burst effect
+  const particleCount = 15;
+  const particles = [];
+  
+  for (let i = 0; i < particleCount; i++) {
+    const particleGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    const particleMaterial = new THREE.MeshBasicMaterial({
+      color: Math.random() > 0.5 ? 0x00ffff : 0xff00ff,
+      transparent: true,
+      opacity: 1
+    });
+    
+    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+    particle.position.set(x, y, z);
+    particle.velocity = {
+      x: (Math.random() - 0.5) * 0.1,
+      y: (Math.random() - 0.5) * 0.1 + 0.05, // Slight upward bias
+      z: (Math.random() - 0.5) * 0.1
+    };
+    
+    scene.add(particle);
+    particles.push(particle);
+  }
+  
+  // Add point light flash
+  const pointLight = new THREE.PointLight(0xffffff, 2, 5);
+  pointLight.position.set(x, y, z);
+  scene.add(pointLight);
+  
+  // Animate expanding ring and particles
+  let scale = 0.1;
+  const animate = () => {
+    if (scale < 3) {
+      // Animate ring
+      scale += 0.15;
+      ring.scale.set(scale, scale, scale);
+      ring.material.opacity = 1 - scale / 3;
+      ring.rotation.z += 0.02;
+      
+      // Animate particles
+      particles.forEach(particle => {
+        particle.position.x += particle.velocity.x;
+        particle.position.y += particle.velocity.y;
+        particle.position.z += particle.velocity.z;
+        particle.material.opacity -= 0.02;
+        particle.rotation.x += 0.1;
+        particle.rotation.y += 0.1;
+      });
+      
+      // Fade out light
+      pointLight.intensity = 2 * (1 - scale / 3);
+      
+      requestAnimationFrame(animate);
+    } else {
+      // Clean up
+      scene.remove(ring);
+      particles.forEach(particle => scene.remove(particle));
+      scene.remove(pointLight);
+    }
+  };
+  
+  animate();
+}
+
+// Flash grid effect when leveling up
+function flashGrid() {
+  const originalColors = [0xff00ff, 0x00ffff];
+  let flashCount = 0;
+  
+  const flashInterval = setInterval(() => {
+    if (flashCount < 6) {
+      if (flashCount % 2 === 0) {
+        // Flash to white
+        gridHelper.material[0].color.setHex(0xffffff);
+        gridHelper.material[1].color.setHex(0xffffff);
+      } else {
+        // Flash back to original colors
+        gridHelper.material[0].color.setHex(originalColors[0]);
+        gridHelper.material[1].color.setHex(originalColors[1]);
+      }
+      flashCount++;
+    } else {
+      clearInterval(flashInterval);
+    }
+  }, 100);
+}
+
+// Show game over screen
+function showGameOver() {
+  document.getElementById('game-over-screen').classList.remove('hidden');
+  
+  // Add VHS static effect to game over screen
+  const gameOverScreen = document.getElementById('game-over-screen');
+  gameOverScreen.style.animation = 'glitchScreen 0.3s infinite';
+  
+  // Stop animation
+  cancelAnimationFrame(animationId);
+}
+
+// Start the game
+function startGame() {
+  gameStarted = true;
+  gameOver = false;
+  document.getElementById('start-screen').classList.add('hidden');
+  updateScore(0);
+  
+  // Start with a grid flash
+  flashGrid();
+  
+  // Create initial objects immediately so the scene isn't empty
+  for (let i = 0; i < 3; i++) {
+    createObstacle();
+    obstacles[i].position.z = -20 - (i * 15); // Position them at different distances
+  }
+  
+  for (let i = 0; i < 5; i++) {
+    createCollectible();
+    collectibles[i].position.z = -15 - (i * 10); // Position them at different distances
+  }
+}
+
+// Restart the game
+function restartGame() {
+  // Reset game state
+  gameOver = false;
+  speed = 0.2;
+  level = 1;
+  currentLane = 1;
+  
+  // Clear obstacles and collectibles
+  for (const obstacle of obstacles) {
+    scene.remove(obstacle);
+  }
+  obstacles = [];
+  
+  for (const collectible of collectibles) {
+    scene.remove(collectible);
+  }
+  collectibles = [];
+  
+  // Reset player position
+  player.position.set(lanes[currentLane], playerSize / 2, 0);
+  player.rotation.set(0, 0, 0);
+  
+  // Reset UI
+  updateScore(0);
+  document.getElementById('game-over-screen').classList.add('hidden');
+  
+  // Remove VHS static effect
+  const gameOverScreen = document.getElementById('game-over-screen');
+  gameOverScreen.style.animation = '';
+  
+  // Start with a grid flash
+  flashGrid();
+  
+  // Restart animation
+  animate();
+}
+
+// Animation loop
+function animate() {
+  animationId = requestAnimationFrame(animate);
+  
+  // Always animate grid and sun, even before game starts
+  // Move and animate grid
+  gridHelper.position.z += gameStarted ? speed : 0.1;
+  if (gridHelper.position.z > 0) {
+    gridHelper.position.z = -1000;
+  }
+  
+  // Move the retro sun and stars
+  sun.rotation.z += 0.005;
+  
+  if (gameStarted && !gameOver) {
+    // Move player to target lane
+    player.position.x += (lanes[currentLane] - player.position.x) * 0.1;
+    
+    // Rotate wheels or add hover effect
+    if (player.children && player.children.length > 0) {
+      player.children.forEach(child => {
+        // Add slight bobbing motion to simulate hovering
+        child.position.y = Math.sin(Date.now() * 0.005) * 0.03;
+      });
+    }
+    
+    // Move obstacles
+    obstacles.forEach(obstacle => {
+      obstacle.position.z += speed;
+      
+      // Different rotation effects based on obstacle type
+      if (obstacle.children && obstacle.children[0].geometry) {
+        // For group objects
+        obstacle.rotation.z += 0.03;
+      }
+    });
+    
+    // Move collectibles
+    collectibles.forEach(collectible => {
+      collectible.position.z += speed;
+      
+      // Check for special animation function
+      if (collectible.userData && collectible.userData.animate) {
+        collectible.userData.animate(Date.now());
+      } else {
+        // Different animation based on collectible type
+        collectible.rotation.y += 0.02;
+      }
+      
+      // Floating effect
+      collectible.position.y = 0.5 + Math.sin(Date.now() * 0.002 + collectible.position.x) * 0.2;
+    });
+    
+    // Create obstacles and collectibles - higher frequency at higher levels
+    if (Math.random() < 0.02 + level * 0.003) {
+      createObstacle();
+    }
+    
+    if (Math.random() < 0.02 + level * 0.002) {
+      createCollectible();
+    }
+    
+    // Check collisions
+    checkCollisions();
+  }
+  
+  // Render scene
+  renderer.render(scene, camera);
+}
+
+// Initialize the game when the page loads with safety checks
+document.addEventListener('DOMContentLoaded', function() {
+  // Check for THREE before trying to initialize
+  if (typeof THREE === 'undefined') {
+    console.error('THREE is not defined! Attempting to load Three.js directly...');
+    
+    // Try to load Three.js dynamically
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js';
+    script.onload = function() {
+      console.log('Three.js loaded successfully!');
+      // Initialize game after loading
+      init();
+    };
+    script.onerror = function() {
+      console.error('Failed to load Three.js dynamically');
+      alert('Could not load Three.js library. Please refresh the page or try a different browser.');
+    };
+    document.head.appendChild(script);
+  } else {
+    // THREE is available, initialize normally
+    console.log('THREE is already defined, initializing game...');
+    init();
+  }
+});
+
+// Simplified global handler for spacebar - capture at window level
+window.addEventListener('keydown', function(event) {
+  // Handle the space key for controlling the game
+  if (event.key === ' ' || event.code === 'Space') {
+    // Prevent page scrolling
+    event.preventDefault();
+    
+    console.log('Space pressed!', gameStarted, gameOver);
+    
+    // Handle game state
+    if (!gameStarted) {
+      startGame();
+    } else if (gameOver) {
+      restartGame();
+    }
+  }
+}, false);
+</script>
