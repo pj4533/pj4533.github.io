@@ -510,8 +510,8 @@ function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
   
-  // Add fog for depth effect - purple fog for 80s vibe
-  scene.fog = new THREE.Fog(0x110022, 8, 35);
+  // Modified fog for better grid visibility - pushed further back
+  scene.fog = new THREE.Fog(0x110022, 20, 80); // Much broader fog range (20 near, 80 far)
   
   // Create camera
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -579,6 +579,9 @@ function init() {
   
   // Start animation loop
   animate();
+  
+  // Flash the grid immediately when the page loads for emphasis
+  setTimeout(flashGrid, 500);
 }
 
 // Handle keyboard input
@@ -709,19 +712,33 @@ function createTrack() {
   scene.add(track);
   
   // Add prominent 80s-style neon grid lines - main visual element
-  // Create multiple grid layers for more depth and visibility
+  // Create multiple grid layers for more depth and visibility - moved closer to be always visible
+  
+  // Primary grid - positioned much closer to be immediately visible
   gridHelper = new THREE.GridHelper(100, 50, 0xff00ff, 0x00ffff);
   gridHelper.position.y = 0.01; // Just above the track
-  gridHelper.position.z = -500;
+  gridHelper.position.z = -30; // Positioned much closer to be immediately visible
+  // Make grid lines thicker for better visibility
+  if (gridHelper.material) {
+    gridHelper.material.linewidth = 2; // May not work in all browsers but worth trying
+  }
   scene.add(gridHelper);
   
-  // Add secondary grid for enhanced visibility
+  // Secondary grid - also positioned closer
   const secondaryGrid = new THREE.GridHelper(200, 100, 0xff00ff, 0x00ffff);
   secondaryGrid.position.y = -0.2; // Below the main grid
-  secondaryGrid.position.z = -800; // Further back
-  secondaryGrid.material.opacity = 0.4;
+  secondaryGrid.position.z = -120; // Much closer than before, but still behind primary
+  secondaryGrid.material.opacity = 0.6; // More visible
   secondaryGrid.material.transparent = true;
   scene.add(secondaryGrid);
+  
+  // Add a third grid for even more depth effect
+  const farGrid = new THREE.GridHelper(300, 150, 0xff00ff, 0x00ffff);
+  farGrid.position.y = -0.4; // Even lower
+  farGrid.position.z = -250; // Far but still visible
+  farGrid.material.opacity = 0.3;
+  farGrid.material.transparent = true;
+  scene.add(farGrid);
   
   // Add lane markers
   for (let lane of lanes) {
@@ -1502,8 +1519,12 @@ function startGame() {
   document.getElementById('start-screen').classList.add('hidden');
   updateScore(0);
   
-  // Start with a grid flash
-  flashGrid();
+  // Start with an extra strong grid flash for emphasis
+  setTimeout(() => {
+    flashGrid();
+    // Double flash for emphasis
+    setTimeout(flashGrid, 800);
+  }, 100);
   
   // Only create collectibles - no obstacles
   // Create more initial collectibles to increase chances of seeing repos
@@ -1584,23 +1605,44 @@ function animate() {
     // Always animate grid and sun, even before game starts
     // Move and animate grid - key visual element
     if (gridHelper) {
-      // Move grid slightly faster for more dynamic effect
+      // Animate main grid - much more controlled movement to keep visible
       gridHelper.position.z += gameStarted ? speed * 1.2 : 0.15;
       
-      // When grid moves too far forward, reset it far back to create endless effect
-      if (gridHelper.position.z > 100) { // Allow it to go further before resetting
-        gridHelper.position.z = -1000;
+      // Reset primary grid when it gets too close to keep the infinite effect
+      // But never let it go completely out of view
+      if (gridHelper.position.z > 15) { // Reset much sooner to always keep it visible
+        gridHelper.position.z = -30;
       }
       
-      // Ensure secondary grid is animated too (looking for any GridHelper in the scene)
+      // Animate all other grid helpers with smart distance management
       scene.children.forEach(child => {
         if (child instanceof THREE.GridHelper && child !== gridHelper) {
-          child.position.z += gameStarted ? speed * 0.8 : 0.1; // Move secondary grid slower
-          if (child.position.z > 200) {
-            child.position.z = -1200;
+          // Get Z position to give appropriate speed (further = slower)
+          const baseZ = Math.abs(child.position.z);
+          const speedMultiplier = 1 - (baseZ / 400); // Slower if further away
+          
+          // Move at appropriate speed
+          child.position.z += gameStarted ? speed * speedMultiplier * 1.2 : 0.1;
+          
+          // Ensure grid is never too far or too close
+          if (child.position.z > 20) {
+            // If this is the secondary grid, reset to original position
+            if (baseZ < 150) {
+              child.position.z = -120;
+            } 
+            // If this is the far grid, reset to original position
+            else {
+              child.position.z = -250;
+            }
           }
         }
       });
+      
+      // Always flash the grid immediately if it's the first time running
+      if (!window.gridFlashed) {
+        window.gridFlashed = true;
+        flashGrid();
+      }
     }
     
     // Move the retro sun and stars
