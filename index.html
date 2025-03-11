@@ -254,10 +254,10 @@ class TextParticle {
         hexColor = 'ffffff'; // Default to white if there's a problem
       }
       
-      // Create a gradient for more appealing text
-      const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, `#${hexColor}`);
-      gradient.addColorStop(1, '#ffffff');
+      // Create a subtler gradient for cleaner text with less glow
+      const gradient = context.createLinearGradient(0, 0, canvas.width/2, canvas.height/2);
+      gradient.addColorStop(0, `#${hexColor}`); 
+      gradient.addColorStop(1, `#${hexColor}ee`); // Slightly transparent color (less white)
       
       // Set font properties for maximum clarity - larger and bolder font
       const fontSize = this.isRepoName ? 80 : 54; // Even bigger font for better readability
@@ -271,9 +271,9 @@ class TextParticle {
       // Clear canvas
       context.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Minimal shadow blur for maximum clarity and sharpness
+      // Very minimal shadow blur for maximum clarity and reduced glow
       context.shadowColor = `#${hexColor}`;
-      context.shadowBlur = 10; // Much less blur for sharper text
+      context.shadowBlur = 4; // Significantly reduced blur for much less glow
       context.shadowOffsetX = 0;
       context.shadowOffsetY = 0;
       
@@ -308,8 +308,8 @@ class TextParticle {
         // Reset fill style to gradient
         context.fillStyle = gradient;
         
-        // Minimal glow passes for maximum clarity (single pass)
-        context.shadowBlur = 8;
+        // Extremely minimal glow for maximum clarity (single pass with much less blur)
+        context.shadowBlur = 3; // Very minimal blur for cleaner text
         context.shadowColor = `#${hexColor}`;
         context.strokeText(safeText, canvas.width / 2, canvas.height / 2);
       }
@@ -325,13 +325,13 @@ class TextParticle {
       texture.minFilter = THREE.LinearFilter;
       texture.anisotropy = 4; // Reduced anisotropy for better performance while maintaining quality
       
-      // Create material with transparency
+      // Create material with transparency (less glow effect)
       const material = new THREE.MeshBasicMaterial({
         map: texture,
         transparent: true,
         opacity: this.opacity,
         side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending, // Makes text blend better with background
+        blending: THREE.NormalBlending, // Standard blending for cleaner, less glowy text
         depthWrite: false, // Prevents z-fighting with other text
         depthTest: true
       });
