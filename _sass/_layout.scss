@@ -169,6 +169,19 @@
     text-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
 }
 
+/* Game UI Bottom */
+#game-ui-bottom {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    text-align: center;
+    color: $text-color;
+    font-family: 'JetBrains Mono', monospace;
+    text-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
+}
+
 #score {
     font-size: 1.5rem;
     margin-bottom: 1rem;
@@ -176,8 +189,13 @@
 
 #instructions {
     font-size: 0.9rem;
-    opacity: 0.8;
+    opacity: 0.9;
     line-height: 1.5;
+    display: inline-block;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 10px 20px;
+    border-radius: 10px;
+    margin-bottom: 10px;
 }
 
 /* GitHub repo text particles */
