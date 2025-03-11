@@ -367,9 +367,9 @@ function createExplodingRepoText(position, repo) {
       repo.name || 'Unnamed', 
       repo.description || 'No description');
     
-    // Move repo name to a better viewing position - centered and higher
+    // Move repo name to an optimal centered viewing position (adjusted without description words)
     const namePosition = position.clone();
-    namePosition.y += 1.5; // Raise it up above where it was collected
+    namePosition.y += 0.8; // Slightly raised position (less than before since we removed description words)
     namePosition.z -= 1; // Bring slightly closer to camera for emphasis
 
     // Ensure repo name is valid
@@ -384,49 +384,8 @@ function createExplodingRepoText(position, repo) {
       explodingTexts.push(nameParticle);
     }
     
-    // Get description words and process them
-    const description = repo.description || 'No description available';
-    const descWords = description.split(' ');
-    const maxDescWords = Math.min(descWords.length, 12); // Limit for performance
-    
-    // Create a more structured layout for description words (with performance optimizations)
-    const wordWidthApprox = 0.6; // Approximate width per word for spacing
-    const wordsPerRow = 4; // Number of words per row
-    const rowHeight = 0.8; // Height between rows
-    
-    // Calculate and limit the maximum words to show for better performance
-    const wordLimit = Math.min(maxDescWords, 8); // Limit description words for performance
-    
-    for (let i = 0; i < wordLimit; i++) {
-      // Create a longer delay for better reading
-      setTimeout(() => {
-        const word = descWords[i];
-        if (!word || word.trim().length === 0) return;
-        
-        // Calculate grid position for words
-        const row = Math.floor(i / wordsPerRow);
-        const col = i % wordsPerRow;
-        
-        // Position words in a more readable grid under the repo name
-        const wordPosition = position.clone();
-        wordPosition.x += (col - (wordsPerRow-1)/2) * wordWidthApprox; // Center horizontally
-        wordPosition.y += 0.5 - (row * rowHeight); // Stack vertically below repo name
-        wordPosition.z -= 0.5; // Slightly in front of the collection point
-        
-        // Add a smaller amount of randomness (better readability)
-        wordPosition.x += (Math.random() - 0.5) * 0.15;
-        wordPosition.y += (Math.random() - 0.5) * 0.08;
-        
-        // Create particle for this word with isRepoName = false
-        const wordColor = neonColors[Math.floor(Math.random() * neonColors.length)];
-        const wordParticle = new TextParticle(word, wordPosition, wordColor, false);
-        
-        if (wordParticle.mesh) {
-          scene.add(wordParticle.mesh);
-          explodingTexts.push(wordParticle);
-        }
-      }, 500 + i * 150); // Longer initial delay, plus slightly longer stagger for reading
-    }
+    // Skip description words - only showing repo names now
+    // Description words have been removed for clarity
     
     // Add language and stars information if available
     if (repo.language || repo.stars) {
@@ -436,19 +395,19 @@ function createExplodingRepoText(position, repo) {
         if (repo.stars && repo.stars > 0) infoText += ` ★ ${repo.stars}`;
         
         if (infoText) {
-          // Position below the repository name
+          // Position directly below the repository name for better organization
           const infoPosition = namePosition.clone();
-          infoPosition.y -= 0.6;
+          infoPosition.y -= 0.8; // Position further down without description words
           
-          // Create info text particle with eye-catching color
-          const infoParticle = new TextParticle(infoText, infoPosition, 0xffff00, false);
+          // Create info text particle with eye-catching color and treat as important text
+          const infoParticle = new TextParticle(infoText, infoPosition, 0xffff00, true); // true for more prominence
           
           if (infoParticle.mesh) {
             scene.add(infoParticle.mesh);
             explodingTexts.push(infoParticle);
           }
         }
-      }, 300); // Show shortly after repo name
+      }, 200); // Show more quickly after repo name
     }
   } catch (err) {
     console.error('Error creating repo text effect:', err);
@@ -1500,12 +1459,12 @@ function startGame() {
   // Create an initial repo text display in the center to show the player what to expect
   setTimeout(() => {
     if (githubRepos && githubRepos.length > 0) {
-      // Create a special intro display showing what to expect
+      // Create a special intro display showing what to expect (just repo name)
       const center = new THREE.Vector3(0, 1.5, -5);
       const welcomeRepo = {
-        name: "WELCOME",
-        description: "Collect neon shapes to discover my latest GitHub projects",
-        language: "JavaScript",
+        name: "WELCOME - CATCH NEON SHAPES",
+        language: "GitHub Projects",
+        stars: 0,
         color: 0xffff00
       };
       createExplodingRepoText(center, welcomeRepo);
