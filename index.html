@@ -8,12 +8,10 @@ layout: default
   <div id="game-container">
     <div id="game-canvas"></div>
     <div id="game-ui">
-      <div id="score">Score: 0</div>
       <div id="instructions">
         ← → to move left/right <br>
         Catch the neon shapes to discover my latest GitHub projects <br>
-        Projects shown by most recent activity <br>
-        Press R to refresh projects
+        Projects shown by most recent activity
       </div>
     </div>
     <div id="game-overlay">
@@ -1181,27 +1179,10 @@ function onWindowResize() {
   }
 }
 
-// Update game score
+// This function used to update score, but we've removed scoring
+// Keeping an empty function to avoid breaking existing calls
 function updateScore(newScore) {
-  score = newScore;
-  
-  // Safely update the score display
-  try {
-    const scoreElement = document.getElementById('score');
-    if (scoreElement) {
-      scoreElement.innerHTML = 'Score: ' + score;
-    }
-    
-    // Update high score if needed
-    if (score > highScore) {
-      highScore = score;
-      localStorage.setItem('neonWaveHighScore', highScore);
-      
-      // No longer need to update the high-score element as we removed the game over screen
-    }
-  } catch (err) {
-    console.error('Error updating score display:', err);
-  }
+  // Score tracking removed - purely for showing GitHub projects
 }
 
 // Camera shake effect (for obstacle collisions)
@@ -1232,36 +1213,7 @@ function shakeCamera(intensity = 0.5) {
 
 // Check collisions
 function checkCollisions() {
-  // Check obstacle collisions
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const obstacle = obstacles[i];
-    
-    // Check if obstacle is too far behind
-    if (obstacle.position.z > 10) {
-      scene.remove(obstacle);
-      obstacles.splice(i, 1);
-      continue;
-    }
-    
-    // Check for collision with player
-    const distance = player.position.distanceTo(obstacle.position);
-    if (distance < playerSize + 0.3) {
-      // Create explosion effect
-      createExplosion(obstacle.position.x, obstacle.position.y, obstacle.position.z);
-      
-      // Apply camera shake effect
-      shakeCamera(0.5);
-      
-      // Remove obstacle
-      scene.remove(obstacle);
-      obstacles.splice(i, 1);
-      
-      // No game over - just subtract points
-      updateScore(Math.max(0, score - 10));
-      
-      continue; // Continue checking other obstacles
-    }
-  }
+  // No obstacle collisions - only collectibles for repo display
   
   // Track if we're currently showing a repo to prevent overlapping displays
   if (!window.gameState) {
@@ -1305,30 +1257,12 @@ function checkCollisions() {
         }, REPO_DISPLAY_COOLDOWN);
       }
       
-      // Different scores for different collectible types
-      let points = 0;
-      if (collectible.children[0].geometry.type === 'CylinderGeometry') {
-        // Vinyl records worth more
-        points = 25;
-      } else if (collectible.children[0].geometry.type === 'TetrahedronGeometry') {
-        // Wireframe pyramids worth the most
-        points = 35;
-      } else {
-        // Other items
-        points = 20;
-      }
-      
-      updateScore(score + points);
+      // Remove collectible
       scene.remove(collectible);
       collectibles.splice(i, 1);
       
-      // Speed up game slightly
-      speed += 0.01;
-      
-      // Level up every 100 points
-      if (score % 100 === 0) {
-        level++;
-        // Flash the grid when leveling up
+      // Occasionally flash grid for visual interest
+      if (Math.random() < 0.2) { // 20% chance on collection
         flashGrid();
       }
     }
@@ -1538,17 +1472,11 @@ function startGame() {
   // Start with a grid flash
   flashGrid();
   
-  // Create mostly collectibles to emphasize showing repos
-  // Create fewer obstacles so player can focus on collecting
-  for (let i = 0; i < 2; i++) {
-    createObstacle();
-    obstacles[i].position.z = -50 - (i * 25); // Position them further away
-  }
-  
+  // Only create collectibles - no obstacles
   // Create more initial collectibles to increase chances of seeing repos
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 10; i++) {
     createCollectible();
-    collectibles[i].position.z = -15 - (i * 8); // Position them at different distances
+    collectibles[i].position.z = -15 - (i * 7); // Position them at different distances
   }
   
   // Create an initial repo text display in the center to show the player what to expect
@@ -1608,10 +1536,10 @@ function refreshGame() {
     }, 500);
   }
   
-  // Create new collectibles
-  for (let i = 0; i < 5; i++) {
+  // Create new collectibles - more of them since they're the only interactive elements
+  for (let i = 0; i < 10; i++) {
     createCollectible();
-    collectibles[i].position.z = -15 - (i * 8);
+    collectibles[i].position.z = -15 - (i * 6); // Position them closer together
   }
 }
 
@@ -1744,13 +1672,10 @@ function animate() {
         }
       }
       
-      // Create more collectibles and fewer obstacles to focus on showcasing repos
+      // Only create collectibles - no obstacles
       try {
-        if (Math.random() < 0.01 + level * 0.002) {
-          createObstacle();
-        }
-        
-        if (Math.random() < 0.025 + level * 0.003) { // Higher chance of collectibles
+        // Higher chance of collectibles to ensure a steady stream
+        if (Math.random() < 0.03) {
           createCollectible();
         }
         
