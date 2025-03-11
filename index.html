@@ -114,25 +114,25 @@ class TextParticle {
     this.position = position.clone();
     this.isRepoName = isRepoName; // Flag to identify if this is a repo name (for special treatment)
     
-    // Slower and more subtle movement for better readability
+    // Minimal movement for maximum readability - almost static text
     this.velocity = new THREE.Vector3(
-      (Math.random() - 0.5) * 0.1, // Reduced horizontal movement
-      (Math.random() - 0.5) * 0.05 + 0.05, // Very gentle upward drift
-      (Math.random() - 0.5) * 0.1
+      (Math.random() - 0.5) * 0.02, // Barely any horizontal movement
+      (Math.random() - 0.5) * 0.01 + 0.02, // Extremely gentle upward drift
+      (Math.random() - 0.5) * 0.02  // Minimal z-movement
     );
     
-    // Less rotation for better readability
+    // Almost no rotation for maximum readability
     this.rotation = new THREE.Vector3(
-      (Math.random() - 0.5) * 0.2, // Much less initial rotation
-      (Math.random() - 0.5) * 0.2,
-      (Math.random() - 0.5) * 0.2
+      0, // No initial x rotation
+      0, // No initial y rotation
+      (Math.random() - 0.5) * 0.05 // Tiny initial z rotation only
     );
     
-    // Slower rotation for better readability
+    // Extremely slow rotation for optimal reading
     this.rotationSpeed = new THREE.Vector3(
-      (Math.random() - 0.5) * 0.02, // 5x slower rotation
-      (Math.random() - 0.5) * 0.02,
-      (Math.random() - 0.5) * 0.02
+      0, // No x rotation
+      0, // No y rotation
+      (Math.random() - 0.5) * 0.005 // Extremely slow z rotation only
     );
     
     this.color = color;
@@ -141,12 +141,12 @@ class TextParticle {
     // Much larger scale, especially for repo names
     this.scale = isRepoName ? 2.5 : 1.5;
     
-    // Longer life and even slower fade for better readability
+    // Extremely slow fade for maximum readability
     this.life = 1.0;
-    this.lifeSpeed = isRepoName ? 0.003 : 0.007; // Even slower fade
+    this.lifeSpeed = isRepoName ? 0.0015 : 0.004; // Dramatically slower fade for better reading
     
-    // Longer delay before fading for better readability
-    this.delayFade = isRepoName ? 90 : 30; // More frames before starting to fade
+    // Much longer delay before fading starts for better readability
+    this.delayFade = isRepoName ? 180 : 60; // Many more frames before starting to fade
     
     this.createMesh();
   }
@@ -173,12 +173,12 @@ class TextParticle {
       gradient.addColorStop(0, `#${hexColor}`);
       gradient.addColorStop(1, '#ffffff');
       
-      // Set font properties on the context - much larger font
-      const fontSize = this.isRepoName ? 72 : 48; // Bigger font, especially for repo names
-      context.font = `bold ${fontSize}px "JetBrains Mono", monospace`;
+      // Set font properties for maximum clarity - larger and bolder font
+      const fontSize = this.isRepoName ? 80 : 54; // Even bigger font for better readability
+      context.font = `900 ${fontSize}px "JetBrains Mono", monospace`; // Extra bold weight (900)
       context.fillStyle = gradient;
       context.strokeStyle = '#000000';
-      context.lineWidth = 6; // Thicker outline for better readability
+      context.lineWidth = 8; // Much thicker outline for better readability and contrast
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       
@@ -196,17 +196,27 @@ class TextParticle {
       
       // For repository names, add extra visibility features
       if (this.isRepoName) {
-        // Add a dark background box for better contrast
+        // Add a darker, larger background box with border for maximum contrast
         const textMetrics = context.measureText(safeText);
         const textWidth = textMetrics.width;
         const textHeight = fontSize * 1.2;
         
-        context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        // First draw outer glow border
+        context.fillStyle = `#${hexColor}33`; // Semi-transparent color matching the text
         context.fillRect(
-          canvas.width/2 - textWidth/2 - 20,
-          canvas.height/2 - textHeight/2 - 10,
-          textWidth + 40,
-          textHeight + 20
+          canvas.width/2 - textWidth/2 - 28,
+          canvas.height/2 - textHeight/2 - 18,
+          textWidth + 56,
+          textHeight + 36
+        );
+        
+        // Then draw solid black background
+        context.fillStyle = 'rgba(0, 0, 0, 0.85)'; // Darker background
+        context.fillRect(
+          canvas.width/2 - textWidth/2 - 24,
+          canvas.height/2 - textHeight/2 - 14,
+          textWidth + 48, 
+          textHeight + 28
         );
         
         // Reset fill style to gradient
