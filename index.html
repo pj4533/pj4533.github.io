@@ -30,7 +30,7 @@ let gameStarted = false;
 let gameOver = false;
 let score = 0;
 let highScore = 0;
-let speed = 0.2;
+let speed = 0.25; // Slightly increased speed for more frequent collectible encounters
 let obstacles = [];
 let collectibles = [];
 let level = 1;
@@ -2041,6 +2041,9 @@ function startGame() {
   document.getElementById('start-screen').classList.add('hidden');
   updateScore(0);
   
+  // Initialize the last collectible time to ensure timely collectible creation
+  lastCollectibleTime = Date.now();
+  
   // Start with an extra strong grid flash for emphasis
   setTimeout(() => {
     flashGrid();
@@ -2050,9 +2053,16 @@ function startGame() {
   
   // Only create collectibles - no obstacles
   // Create more initial collectibles to increase chances of seeing repos
-  for (let i = 0; i < 16; i++) {
+  // Guarantee a steady stream of collectibles with no gaps
+  for (let i = 0; i < 20; i++) {
     createCollectible();
-    collectibles[i].position.z = -15 - (i * 6); // Position them at different distances, closer together
+    
+    // Distribute collectibles evenly along the track with no large gaps
+    // Closer positions for initial set, then gradually increasing distance
+    collectibles[i].position.z = -15 - (i * 4.5); // Position them closer for more frequent encounters
+    
+    // Distribute them across all lanes to ensure all areas have collectibles
+    collectibles[i].position.x = lanes[i % 3];
   }
   
   // Create initial welcome text displays to show the player what to expect
@@ -2136,16 +2146,32 @@ function refreshGame() {
   }
   
   // Create new collectibles - more of them since they're the only interactive elements
-  for (let i = 0; i < 10; i++) {
+  // Guarantee a steady stream of collectibles with no gaps
+  for (let i = 0; i < 20; i++) {
     createCollectible();
-    collectibles[i].position.z = -15 - (i * 6); // Position them closer together
+    
+    // Distribute collectibles evenly along the track with no large gaps
+    collectibles[i].position.z = -15 - (i * 4.5); // Position them closer for more frequent encounters
+    
+    // Distribute them across all lanes to ensure all areas have collectibles
+    collectibles[i].position.x = lanes[i % 3];
   }
+  
+  // Reset the last collectible time
+  lastCollectibleTime = Date.now();
 }
+
+// Track last collectible creation time
+let lastCollectibleTime = 0;
+const MAX_TIME_BETWEEN_COLLECTIBLES = 2000; // Maximum 2 seconds between collectibles
 
 // Animation loop
 function animate() {
   try {
     animationId = requestAnimationFrame(animate);
+    
+    // Track current time for guaranteed collectible spawns
+    const currentTime = Date.now();
     
     // Always animate grid and sun, even before game starts
     // Move and animate grid - key visual element
@@ -2307,9 +2333,13 @@ function animate() {
       
       // Only create collectibles - no obstacles
       try {
-        // Increased chance of collectibles to ensure a steady stream (0.03 → 0.06)
-        if (Math.random() < 0.06) {
+        // Check if it's been too long since the last collectible was created
+        const timeSinceLastCollectible = currentTime - lastCollectibleTime;
+        
+        // Either create by random chance or force creation if it's been too long
+        if (Math.random() < 0.06 || timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES) {
           createCollectible();
+          lastCollectibleTime = currentTime;
         }
         
         // Check collisions
