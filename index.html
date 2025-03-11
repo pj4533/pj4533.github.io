@@ -33,6 +33,9 @@ let highScore = 0;
 let speed = 0.25; // Slightly increased speed for more frequent collectible encounters
 let obstacles = [];
 let collectibles = [];
+
+// Store the LinkedIn chance in a global variable so we can modify it temporarily
+window._linkedInItemChance = 0.6; // Default LinkedIn item chance (60%)
 let level = 1;
 let playerSize = 0.6;
 let lanes = [-2, 0, 2];
@@ -66,54 +69,62 @@ async function fetchLinkedInProfile() {
     // we'd get from LinkedIn
     const now = new Date();
     
-    // Sample LinkedIn data structure - in production this would come from the API
+    // Detailed LinkedIn data with realistic job history
     const profileData = {
       full_name: "PJ Gray",
-      headline: "Software Engineer & Developer",
-      summary: "Experienced software engineer with a passion for game development and web technologies.",
+      headline: "Mobile & Full Stack Developer",
+      summary: "Experienced software engineer with a passion for mobile development, Swift, and emerging technologies.",
       experiences: [
         {
-          company: "Independent Developer",
-          title: "Software Engineer",
-          description: "Building web and mobile applications",
-          starts_at: { year: 2020, month: 1 },
+          company: "Freelance Developer",
+          title: "iOS Developer / Swift Engineer",
+          description: "Creating Swift apps and open source libraries",
+          starts_at: { year: 2021, month: 1 },
           ends_at: null // Current position
         },
         {
-          company: "Tech Innovations Inc.",
-          title: "Senior Developer",
-          description: "Led development teams and products",
-          starts_at: { year: 2017, month: 3 },
-          ends_at: { year: 2019, month: 12 }
+          company: "EverTrue",
+          title: "Senior iOS Engineer",
+          description: "Mobile apps for alumni engagement and fundraising",
+          starts_at: { year: 2015, month: 3 },
+          ends_at: { year: 2020, month: 12 }
         },
         {
-          company: "Web Solutions LLC",
-          title: "Web Developer",
-          description: "Frontend development with modern frameworks",
-          starts_at: { year: 2015, month: 6 },
-          ends_at: { year: 2017, month: 2 }
+          company: "KAYAK",
+          title: "iOS Developer",
+          description: "Travel search engine mobile apps",
+          starts_at: { year: 2013, month: 5 },
+          ends_at: { year: 2015, month: 2 }
+        },
+        {
+          company: "Intuit",
+          title: "Mobile Developer",
+          description: "Financial software applications",
+          starts_at: { year: 2011, month: 8 },
+          ends_at: { year: 2013, month: 4 }
+        },
+        {
+          company: "Raytheon",
+          title: "Software Engineer",
+          description: "Defense and aerospace systems",
+          starts_at: { year: 2008, month: 6 },
+          ends_at: { year: 2011, month: 7 }
         }
       ],
       education: [
         {
-          school: "University of Technology",
-          degree_name: "Master's Degree",
-          field_of_study: "Computer Science",
-          starts_at: { year: 2013, month: 9 },
-          ends_at: { year: 2015, month: 5 }
-        },
-        {
-          school: "Tech Institute",
+          school: "Worcester Polytechnic Institute",
           degree_name: "Bachelor's Degree",
-          field_of_study: "Software Engineering",
-          starts_at: { year: 2009, month: 9 },
-          ends_at: { year: 2013, month: 5 }
+          field_of_study: "Computer Science",
+          starts_at: { year: 2004, month: 8 },
+          ends_at: { year: 2008, month: 5 }
         }
       ],
       skills: [
-        "JavaScript", "Three.js", "Web Development", 
-        "Swift", "Mobile App Development", "Game Development",
-        "React", "Node.js", "3D Graphics"
+        "Swift", "iOS Development", "Mobile Apps", 
+        "Objective-C", "C/C++", "Python", "Ruby",
+        "JavaScript", "Web Development", "Three.js",
+        "Git", "Raspberry Pi", "IoT", "Open Source"
       ],
       timestamp: now.toISOString()
     };
@@ -1348,8 +1359,8 @@ function createObstacle() {
 function createCollectible() {
   const lane = Math.floor(Math.random() * 3);
   
-  // Determine if this should be a LinkedIn collectible (increased to 40% chance)
-  const isLinkedInItem = linkedinData.length > 0 && Math.random() < 0.4;
+  // Determine if this should be a LinkedIn collectible (using the configurable chance)
+  const isLinkedInItem = linkedinData.length > 0 && Math.random() < window._linkedInItemChance;
   
   // For standard collectibles, choose a random type
   const collectibleType = Math.floor(Math.random() * 4);
@@ -2052,10 +2063,24 @@ function startGame() {
   }, 100);
   
   // Only create collectibles - no obstacles
-  // Create more initial collectibles to increase chances of seeing repos
-  // Guarantee a steady stream of collectibles with no gaps
+  // Create more initial collectibles with a deliberate mix of LinkedIn/GitHub items
+  // Guarantee exposure to LinkedIn profile data
   for (let i = 0; i < 20; i++) {
+    // Force more LinkedIn items at the beginning to ensure exposure to profile data
+    // For the first 14 collectibles, prefer LinkedIn (70% chance)
+    // This ensures players will see LinkedIn data early and often
+    const forceHighLinkedInChance = i < 14;
+    
+    // Create the collectible - temporarily override the random chance for initial collectibles
+    const originalChance = window._linkedInItemChance;
+    if (forceHighLinkedInChance) {
+      window._linkedInItemChance = 0.7; // 70% chance of LinkedIn item for initial collectibles
+    }
+    
     createCollectible();
+    
+    // Restore original chance
+    window._linkedInItemChance = originalChance;
     
     // Distribute collectibles evenly along the track with no large gaps
     // Closer positions for initial set, then gradually increasing distance
@@ -2145,10 +2170,44 @@ function refreshGame() {
     }, 500);
   }
   
+  // Ensure LinkedIn data is loaded
+  if (linkedinData.length === 0) {
+    console.log('Loading LinkedIn profile data on refresh...');
+    fetchLinkedInProfile().then(profile => {
+      linkedinData = processLinkedInData(profile);
+      console.log('LinkedIn data loaded with', linkedinData.length, 'items');
+      
+      // Show LinkedIn profile as an announcement
+      if (linkedinData.length > 0) {
+        setTimeout(() => {
+          const profileItem = linkedinData.find(item => item.type === 'profile') || linkedinData[0];
+          const center = new THREE.Vector3(0, 2, -3);
+          createExplodingRepoText(center, profileItem);
+        }, 1000);
+      }
+    });
+  } else {
+    console.log('Using existing LinkedIn data:', linkedinData.length, 'items');
+  }
+  
   // Create new collectibles - more of them since they're the only interactive elements
-  // Guarantee a steady stream of collectibles with no gaps
+  // Guarantee a steady stream of collectibles with no gaps and high LinkedIn exposure
   for (let i = 0; i < 20; i++) {
+    // Force more LinkedIn items at the beginning to ensure exposure to profile data
+    // For the first 14 collectibles, prefer LinkedIn (70% chance)
+    // This ensures players will see LinkedIn data early and often
+    const forceHighLinkedInChance = i < 14;
+    
+    // Create the collectible - temporarily override the random chance for initial collectibles
+    const originalChance = window._linkedInItemChance;
+    if (forceHighLinkedInChance) {
+      window._linkedInItemChance = 0.7; // 70% chance of LinkedIn item for initial collectibles
+    }
+    
     createCollectible();
+    
+    // Restore original chance
+    window._linkedInItemChance = originalChance;
     
     // Distribute collectibles evenly along the track with no large gaps
     collectibles[i].position.z = -15 - (i * 4.5); // Position them closer for more frequent encounters
