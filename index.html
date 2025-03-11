@@ -11,20 +11,15 @@ layout: default
       <div id="score">Score: 0</div>
       <div id="instructions">
         ← → to move left/right <br>
-        Catch the neon shapes to see my GitHub projects <br>
-        Avoid the glitchy ones
+        Catch the neon shapes to discover my latest GitHub projects <br>
+        Projects shown by most recent activity <br>
+        Press R to refresh projects
       </div>
     </div>
     <div id="game-overlay">
       <div id="start-screen" class="overlay-screen">
         <div class="logo">NEON WAVE</div>
         <div class="start-button">PRESS SPACE TO START</div>
-      </div>
-      <div id="game-over-screen" class="overlay-screen hidden">
-        <div class="game-over-text">GAME OVER</div>
-        <div class="final-score">Score: 0</div>
-        <div class="high-score">HIGH SCORE: 0</div>
-        <div class="restart-button">PRESS SPACE TO RESTART</div>
       </div>
     </div>
   </div>
@@ -57,25 +52,48 @@ let explodingTexts = []; // Will hold the exploding text particles
 async function fetchGitHubRepos() {
   try {
     const username = 'pj4533';
-    const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=30`);
+    
+    // Get repos sorted by most recently updated
+    // The 'updated' sort parameter sorts by the last time the repo was pushed to
+    const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&direction=desc&per_page=50`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch repositories');
     }
     
     const repos = await response.json();
+    console.log('Fetched repos:', repos.length);
     
     // Filter out forks and repos without descriptions
-    return repos
-      .filter(repo => !repo.fork && repo.description)
+    const filteredRepos = repos
+      .filter(repo => !repo.fork && repo.description && repo.description.trim() !== '')
       .map(repo => ({
         name: repo.name,
         description: repo.description,
         url: repo.html_url,
         stars: repo.stargazers_count,
         language: repo.language,
+        updated_at: repo.updated_at,
+        pushed_at: repo.pushed_at, // When the repo was last pushed to
         color: neonColors[Math.floor(Math.random() * neonColors.length)]
       }));
+    
+    // Sort by pushed_at date (most recent commit activity first)
+    filteredRepos.sort((a, b) => {
+      const dateA = new Date(a.pushed_at || a.updated_at);
+      const dateB = new Date(b.pushed_at || b.updated_at);
+      return dateB - dateA; // Descending order (newest first)
+    });
+    
+    console.log('Filtered repos with descriptions:', filteredRepos.length);
+    
+    // Log the top 5 repos to verify they're sorted correctly
+    console.log('Top 5 most recent repos:');
+    filteredRepos.slice(0, 5).forEach(repo => {
+      console.log(`- ${repo.name}: Last updated ${new Date(repo.pushed_at || repo.updated_at).toLocaleDateString()}`);
+    });
+    
+    return filteredRepos;
   } catch (error) {
     console.error('Error fetching GitHub repos:', error);
     // Fallback data in case the API fails
@@ -83,6 +101,8 @@ async function fetchGitHubRepos() {
       { name: 'OpenPics', description: 'Open source iOS app for viewing images from various services', color: 0x00ffff },
       { name: 'SwiftSockets', description: 'A simple socket wrapper for Swift', color: 0xff00ff },
       { name: 'WifiMonitor', description: 'Raspberry Pi based WiFi monitoring tool', color: 0xffff00 },
+      { name: 'NeonWave', description: 'A retro-styled WebGL game with Three.js', color: 0xff9900 },
+      { name: 'RetroUI', description: 'Retro UI components for modern web applications', color: 0x00ff99 },
     ];
   }
 }
@@ -396,10 +416,28 @@ function init() {
   // Create player
   createPlayer();
   
-  // Fetch GitHub repositories
+  // Fetch GitHub repositories - load immediately on page load
+  console.log('Loading GitHub repositories...');
   fetchGitHubRepos().then(repos => {
     githubRepos = repos;
     console.log('Loaded GitHub repos:', githubRepos.length);
+    
+    // Update periodically to ensure fresh content
+    setInterval(() => {
+      if (gameStarted) {
+        fetchGitHubRepos().then(freshRepos => {
+          if (freshRepos.length > 0) {
+            // Compare first repo to see if there's anything new
+            if (githubRepos.length === 0 || 
+                freshRepos[0].name !== githubRepos[0].name || 
+                freshRepos[0].updated_at !== githubRepos[0].updated_at) {
+              githubRepos = freshRepos;
+              console.log('Auto-updated GitHub repos:', githubRepos.length);
+            }
+          }
+        });
+      }
+    }, 60000); // Check every minute for updates
   });
   
   // Handle window resize
@@ -432,21 +470,35 @@ function handleKeyDown(event) {
     event.preventDefault();
   }
   
-  // Handle spacebar for game start/restart
+  // Handle spacebar to start the game
   if (event.key === ' ') {
-    if (gameOver) {
-      restartGame();
+    if (!gameStarted) {
+      startGame();
       return;
     }
     
-    if (!gameStarted) {
-      startGame();
+    // We can also use spacebar as an alternative to show a random repo
+    if (Math.random() < 0.05) { // Increased chance to trigger fun repo fact
+      if (githubRepos.length > 0) {
+        const randomRepo = githubRepos[Math.floor(Math.random() * githubRepos.length)];
+        
+        // Create a special centered text effect
+        const center = new THREE.Vector3(0, 1.5, 0);
+        createExplodingRepoText(center, randomRepo);
+      }
+    }
+  }
+  
+  // Add R key to refresh the game and repos
+  if (event.key === 'r' || event.key === 'R') {
+    if (gameStarted) {
+      refreshGame();
       return;
     }
   }
   
   // Only handle movement if game is active
-  if (!gameStarted || gameOver) return;
+  if (!gameStarted) return;
   
   // Handle movement with arrow keys
   if (event.key === 'ArrowLeft') {
@@ -1018,6 +1070,32 @@ function updateScore(newScore) {
   }
 }
 
+// Camera shake effect (for obstacle collisions)
+function shakeCamera(intensity = 0.5) {
+  const originalPosition = camera.position.clone();
+  const shakeDuration = 20; // frames
+  let shakeFrame = 0;
+  
+  function doShake() {
+    if (shakeFrame < shakeDuration) {
+      // Calculate decreasing intensity
+      const currentIntensity = intensity * (1 - shakeFrame / shakeDuration);
+      
+      // Apply random offset to camera
+      camera.position.x = originalPosition.x + (Math.random() - 0.5) * currentIntensity;
+      camera.position.y = originalPosition.y + (Math.random() - 0.5) * currentIntensity;
+      
+      shakeFrame++;
+      requestAnimationFrame(doShake);
+    } else {
+      // Reset camera position after shake
+      camera.position.copy(originalPosition);
+    }
+  }
+  
+  doShake();
+}
+
 // Check collisions
 function checkCollisions() {
   // Check obstacle collisions
@@ -1035,12 +1113,19 @@ function checkCollisions() {
     const distance = player.position.distanceTo(obstacle.position);
     if (distance < playerSize + 0.3) {
       // Create explosion effect
-      createExplosion(player.position.x, player.position.y, player.position.z);
+      createExplosion(obstacle.position.x, obstacle.position.y, obstacle.position.z);
       
-      // Play glitch animation on game over screen
-      gameOver = true;
-      showGameOver();
-      return;
+      // Apply camera shake effect
+      shakeCamera(0.5);
+      
+      // Remove obstacle
+      scene.remove(obstacle);
+      obstacles.splice(i, 1);
+      
+      // No game over - just subtract points
+      updateScore(Math.max(0, score - 10));
+      
+      continue; // Continue checking other obstacles
     }
   }
   
@@ -1186,16 +1271,28 @@ function createCollectionEffect(x, y, z) {
   
   // Display GitHub repo info if available
   if (githubRepos && githubRepos.length > 0) {
-    // Select a random repository from the loaded ones
-    const repoIndex = Math.floor(Math.random() * githubRepos.length);
-    const repo = githubRepos[repoIndex];
+    // Get the next repository from the front of the array (newest repos first)
+    // This ensures we're always showing the most recently updated repos first
+    const repo = githubRepos[0];
     
     // Create the exploding text effect with the repository info
     createExplodingRepoText(new THREE.Vector3(x, y, z), repo);
     
-    // Remove this repo from the list if we have enough (to avoid repetition)
-    if (githubRepos.length > 5) {
-      githubRepos.splice(repoIndex, 1);
+    // Move this repo to the end of the array to cycle through them
+    // This way we show all repos before repeating
+    if (githubRepos.length > 1) {
+      const usedRepo = githubRepos.shift(); // Remove from front
+      githubRepos.push(usedRepo); // Add to end
+    }
+    
+    // If we have less than 5 repos, try to fetch more
+    if (githubRepos.length < 5 && Math.random() < 0.3) {
+      fetchGitHubRepos().then(repos => {
+        if (repos.length > 0) {
+          githubRepos = repos;
+          console.log('Refreshed GitHub repos:', githubRepos.length);
+        }
+      });
     }
   }
   
@@ -1257,47 +1354,52 @@ function flashGrid() {
   }, 100);
 }
 
-// Show game over screen
-function showGameOver() {
-  document.getElementById('game-over-screen').classList.remove('hidden');
-  
-  // Add VHS static effect to game over screen
-  const gameOverScreen = document.getElementById('game-over-screen');
-  gameOverScreen.style.animation = 'glitchScreen 0.3s infinite';
-  
-  // Stop animation
-  cancelAnimationFrame(animationId);
-}
+// No game over functionality needed
 
 // Start the game
 function startGame() {
   gameStarted = true;
-  gameOver = false;
+  gameOver = false; // Keep this for compatibility but don't use it
   document.getElementById('start-screen').classList.add('hidden');
   updateScore(0);
   
   // Start with a grid flash
   flashGrid();
   
-  // Create initial objects immediately so the scene isn't empty
-  for (let i = 0; i < 3; i++) {
+  // Create mostly collectibles to emphasize showing repos
+  // Create fewer obstacles so player can focus on collecting
+  for (let i = 0; i < 2; i++) {
     createObstacle();
-    obstacles[i].position.z = -20 - (i * 15); // Position them at different distances
+    obstacles[i].position.z = -50 - (i * 25); // Position them further away
   }
   
-  for (let i = 0; i < 5; i++) {
+  // Create more initial collectibles to increase chances of seeing repos
+  for (let i = 0; i < 8; i++) {
     createCollectible();
-    collectibles[i].position.z = -15 - (i * 10); // Position them at different distances
+    collectibles[i].position.z = -15 - (i * 8); // Position them at different distances
   }
+  
+  // Create an initial repo text display in the center to show the player what to expect
+  setTimeout(() => {
+    if (githubRepos && githubRepos.length > 0) {
+      // Create a special intro display showing what to expect
+      const center = new THREE.Vector3(0, 1.5, -5);
+      const welcomeRepo = {
+        name: "WELCOME",
+        description: "Collect neon shapes to discover my latest GitHub projects",
+        language: "JavaScript",
+        color: 0xffff00
+      };
+      createExplodingRepoText(center, welcomeRepo);
+    }
+  }, 1000); // Show intro message after a short delay
 }
 
-// Restart the game
-function restartGame() {
-  // Reset game state
-  gameOver = false;
+// Refresh the game - can be triggered manually if needed
+function refreshGame() {
+  // Reset basic game parameters but don't stop gameplay
   speed = 0.2;
   level = 1;
-  currentLane = 1;
   
   // Clear obstacles and collectibles
   for (const obstacle of obstacles) {
@@ -1310,37 +1412,40 @@ function restartGame() {
   }
   collectibles = [];
   
-  // Clear any exploding text particles
-  for (const textParticle of explodingTexts) {
-    scene.remove(textParticle.mesh);
-  }
-  explodingTexts = [];
+  // Keep current text particles - they'll fade naturally
   
-  // Reset player position
+  // Reset player position to current lane
   player.position.set(lanes[currentLane], playerSize / 2, 0);
   player.rotation.set(0, 0, 0);
   
-  // Reset UI
+  // Reset score
   updateScore(0);
-  document.getElementById('game-over-screen').classList.add('hidden');
   
-  // Remove VHS static effect
-  const gameOverScreen = document.getElementById('game-over-screen');
-  gameOverScreen.style.animation = '';
-  
-  // Start with a grid flash
+  // Flash grid for visual effect
   flashGrid();
   
   // Reload GitHub repositories
   fetchGitHubRepos().then(repos => {
     if (repos.length > 0) {
       githubRepos = repos;
-      console.log('Reloaded GitHub repos for new game:', githubRepos.length);
+      console.log('Refreshed GitHub repos:', githubRepos.length);
+      
+      // Show newest repo as an announcement
+      if (githubRepos.length > 0) {
+        setTimeout(() => {
+          const newestRepo = githubRepos[0];
+          const center = new THREE.Vector3(0, 2, -3);
+          createExplodingRepoText(center, newestRepo);
+        }, 500);
+      }
     }
   });
   
-  // Restart animation
-  animate();
+  // Create new collectibles
+  for (let i = 0; i < 5; i++) {
+    createCollectible();
+    collectibles[i].position.z = -15 - (i * 8);
+  }
 }
 
 // Animation loop
@@ -1369,7 +1474,7 @@ function animate() {
     }
   }
   
-  if (gameStarted && !gameOver) {
+  if (gameStarted) {
     // Move player to target lane
     player.position.x += (lanes[currentLane] - player.position.x) * 0.1;
     
@@ -1408,20 +1513,20 @@ function animate() {
       collectible.position.y = 0.5 + Math.sin(Date.now() * 0.002 + collectible.position.x) * 0.2;
     });
     
-    // Create obstacles and collectibles - higher frequency at higher levels
-    if (Math.random() < 0.02 + level * 0.003) {
+    // Create more collectibles and fewer obstacles to focus on showcasing repos
+    if (Math.random() < 0.01 + level * 0.002) {
       createObstacle();
     }
     
-    if (Math.random() < 0.02 + level * 0.002) {
+    if (Math.random() < 0.025 + level * 0.003) { // Higher chance of collectibles
       createCollectible();
     }
     
     // Check collisions
     checkCollisions();
     
-    // Reload repos if needed
-    if (githubRepos.length < 3 && Math.random() < 0.01) {
+    // Reload repos if needed - check more often
+    if (githubRepos.length < 5 && Math.random() < 0.02) {
       fetchGitHubRepos().then(repos => {
         if (repos.length > 0) {
           githubRepos = repos;
@@ -1468,13 +1573,9 @@ window.addEventListener('keydown', function(event) {
     // Prevent page scrolling
     event.preventDefault();
     
-    console.log('Space pressed!', gameStarted, gameOver);
-    
     // Handle game state
     if (!gameStarted) {
       startGame();
-    } else if (gameOver) {
-      restartGame();
     }
   }
 }, false);
