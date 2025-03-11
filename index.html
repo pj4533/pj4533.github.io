@@ -152,223 +152,295 @@ class TextParticle {
   }
 
   createMesh() {
-    // Create canvas for text
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 1024; // Double resolution for better text quality
-    canvas.height = 512;
-    
-    // Create a gradient for more appealing text
-    const hexColor = this.color.toString(16).padStart(6, '0');
-    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, `#${hexColor}`);
-    gradient.addColorStop(1, '#ffffff');
-    
-    // Set font properties on the context - much larger font
-    const fontSize = this.isRepoName ? 72 : 48; // Bigger font, especially for repo names
-    context.font = `bold ${fontSize}px "JetBrains Mono", monospace`;
-    context.fillStyle = gradient;
-    context.strokeStyle = '#000000';
-    context.lineWidth = 6; // Thicker outline for better readability
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    
-    // Clear canvas
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Add stronger glow effect
-    context.shadowColor = `#${hexColor}`;
-    context.shadowBlur = 25; // Increased blur for more prominent glow
-    context.shadowOffsetX = 0;
-    context.shadowOffsetY = 0;
-    
-    // For repository names, add extra visibility features
-    if (this.isRepoName) {
-      // Add a dark background box for better contrast
-      const textMetrics = context.measureText(this.text);
-      const textWidth = textMetrics.width;
-      const textHeight = fontSize * 1.2;
+    try {
+      // Create canvas for text
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = 1024; // Double resolution for better text quality
+      canvas.height = 512;
       
-      context.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      context.fillRect(
-        canvas.width/2 - textWidth/2 - 20,
-        canvas.height/2 - textHeight/2 - 10,
-        textWidth + 40,
-        textHeight + 20
-      );
-      
-      // Reset fill style to gradient
-      context.fillStyle = gradient;
-      
-      // Add extra glow passes for repo names
-      for (let i = 0; i < 3; i++) {
-        context.shadowBlur = 20 - i * 5;
-        context.shadowColor = `#${hexColor}`;
-        context.strokeText(this.text, canvas.width / 2, canvas.height / 2);
+      // Safely convert color to hex (handle undefined or invalid colors)
+      let hexColor;
+      try {
+        hexColor = (this.color || 0xffffff).toString(16).padStart(6, '0');
+      } catch (e) {
+        console.error('Color conversion error:', e);
+        hexColor = 'ffffff'; // Default to white if there's a problem
       }
+      
+      // Create a gradient for more appealing text
+      const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, `#${hexColor}`);
+      gradient.addColorStop(1, '#ffffff');
+      
+      // Set font properties on the context - much larger font
+      const fontSize = this.isRepoName ? 72 : 48; // Bigger font, especially for repo names
+      context.font = `bold ${fontSize}px "JetBrains Mono", monospace`;
+      context.fillStyle = gradient;
+      context.strokeStyle = '#000000';
+      context.lineWidth = 6; // Thicker outline for better readability
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      
+      // Clear canvas
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Add stronger glow effect
+      context.shadowColor = `#${hexColor}`;
+      context.shadowBlur = 25; // Increased blur for more prominent glow
+      context.shadowOffsetX = 0;
+      context.shadowOffsetY = 0;
+      
+      // Make sure text is always a string
+      const safeText = String(this.text || '');
+      
+      // For repository names, add extra visibility features
+      if (this.isRepoName) {
+        // Add a dark background box for better contrast
+        const textMetrics = context.measureText(safeText);
+        const textWidth = textMetrics.width;
+        const textHeight = fontSize * 1.2;
+        
+        context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        context.fillRect(
+          canvas.width/2 - textWidth/2 - 20,
+          canvas.height/2 - textHeight/2 - 10,
+          textWidth + 40,
+          textHeight + 20
+        );
+        
+        // Reset fill style to gradient
+        context.fillStyle = gradient;
+        
+        // Add extra glow passes for repo names
+        for (let i = 0; i < 3; i++) {
+          context.shadowBlur = 20 - i * 5;
+          context.shadowColor = `#${hexColor}`;
+          context.strokeText(safeText, canvas.width / 2, canvas.height / 2);
+        }
+      }
+      
+      // Draw text (first stroke for outline, then fill)
+      const textX = canvas.width / 2;
+      const textY = canvas.height / 2;
+      context.strokeText(safeText, textX, textY);
+      context.fillText(safeText, textX, textY);
+      
+      // Create texture from canvas
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.minFilter = THREE.LinearFilter;
+      texture.anisotropy = 8; // Higher anisotropy for better text quality at angles
+      
+      // Create material with transparency
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: this.opacity,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending, // Makes text blend better with background
+        depthWrite: false, // Prevents z-fighting with other text
+        depthTest: true
+      });
+      
+      // Create plane geometry for the text
+      const geometry = new THREE.PlaneGeometry(3, 1.5); // Larger plane for text
+      
+      // Create mesh with geometry and material
+      this.mesh = new THREE.Mesh(geometry, material);
+      this.mesh.position.copy(this.position);
+      this.mesh.scale.set(this.scale, this.scale, this.scale);
+      
+      // Add the repo-text class
+      this.mesh.userData.className = 'repo-text';
+      
+      // Make sure camera exists before looking at it
+      if (camera) {
+        // Always face the camera (billboard effect)
+        this.mesh.lookAt(camera.position);
+      }
+    } catch (err) {
+      console.error('Error creating text mesh:', err);
+      
+      // Create a fallback simple mesh if text creation fails
+      const geometry = new THREE.PlaneGeometry(1, 0.5);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: this.opacity
+      });
+      this.mesh = new THREE.Mesh(geometry, material);
+      this.mesh.position.copy(this.position);
     }
-    
-    // Draw text (first stroke for outline, then fill)
-    const textX = canvas.width / 2;
-    const textY = canvas.height / 2;
-    context.strokeText(this.text, textX, textY);
-    context.fillText(this.text, textX, textY);
-    
-    // Create texture from canvas
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.minFilter = THREE.LinearFilter;
-    texture.anisotropy = 8; // Higher anisotropy for better text quality at angles
-    
-    // Create material with transparency
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      opacity: this.opacity,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending, // Makes text blend better with background
-      depthWrite: false, // Prevents z-fighting with other text
-      depthTest: true
-    });
-    
-    // Create plane geometry for the text
-    const geometry = new THREE.PlaneGeometry(3, 1.5); // Larger plane for text
-    
-    // Create mesh with geometry and material
-    this.mesh = new THREE.Mesh(geometry, material);
-    this.mesh.position.copy(this.position);
-    this.mesh.scale.set(this.scale, this.scale, this.scale);
-    
-    // Add the repo-text class
-    this.mesh.userData.className = 'repo-text';
-    
-    // Always face the camera (billboard effect)
-    this.mesh.lookAt(camera.position);
   }
   
   update() {
-    // Update position with gentle movement
-    this.position.add(this.velocity);
-    this.mesh.position.copy(this.position);
-    
-    // Slight rotation for subtle motion but not too much to make it hard to read
-    this.rotation.x += this.rotationSpeed.x;
-    this.rotation.y += this.rotationSpeed.y;
-    this.rotation.z += this.rotationSpeed.z;
-    
-    // Always look at camera first (billboard effect) then apply subtle rotation
-    this.mesh.lookAt(camera.position);
-    // Apply only Z rotation to keep text oriented correctly
-    this.mesh.rotateZ(this.rotation.z * 0.3);
-    
-    // Delayed fade effect - only start fading after delay
-    if (this.delayFade > 0) {
-      this.delayFade--;
-    } else {
-      this.life -= this.lifeSpeed;
-      
-      // For smoother fade out, especially for repo names
-      if (this.isRepoName) {
-        // Repo names stay fully visible longer
-        this.opacity = this.life > 0.7 ? 1.0 : this.life;
-      } else {
-        this.opacity = this.life;
+    try {
+      if (!this.mesh) {
+        console.error('Missing mesh in TextParticle update');
+        return false; // Return false to remove this particle
       }
       
-      this.mesh.material.opacity = this.opacity;
+      // Update position with gentle movement
+      this.position.add(this.velocity);
+      this.mesh.position.copy(this.position);
+      
+      // Slight rotation for subtle motion but not too much to make it hard to read
+      this.rotation.x += this.rotationSpeed.x;
+      this.rotation.y += this.rotationSpeed.y;
+      this.rotation.z += this.rotationSpeed.z;
+      
+      // Always look at camera first (billboard effect) if camera exists
+      if (camera) {
+        try {
+          this.mesh.lookAt(camera.position);
+          // Apply only Z rotation to keep text oriented correctly
+          this.mesh.rotateZ(this.rotation.z * 0.3);
+        } catch (e) {
+          console.error('Error rotating text:', e);
+        }
+      }
+      
+      // Delayed fade effect - only start fading after delay
+      if (this.delayFade > 0) {
+        this.delayFade--;
+      } else {
+        this.life -= this.lifeSpeed;
+        
+        // For smoother fade out, especially for repo names
+        if (this.isRepoName) {
+          // Repo names stay fully visible longer
+          this.opacity = this.life > 0.7 ? 1.0 : this.life;
+        } else {
+          this.opacity = this.life;
+        }
+        
+        if (this.mesh.material) {
+          this.mesh.material.opacity = this.opacity;
+        }
+      }
+      
+      // Gentle scale increase - different for repo names vs description words
+      let scaleFactor;
+      if (this.isRepoName) {
+        // Repo names grow more slowly
+        scaleFactor = 1 + (1 - this.life) * 0.3;
+      } else {
+        // Description words can grow a bit more
+        scaleFactor = 1 + (1 - this.life) * 0.5;
+      }
+      
+      // Apply scale (safely)
+      try {
+        this.mesh.scale.set(this.scale * scaleFactor, this.scale * scaleFactor, this.scale * scaleFactor);
+      } catch (e) {
+        console.error('Error scaling text:', e);
+      }
+      
+      // Return true if still alive, false if should be removed
+      return this.life > 0;
+    } catch (err) {
+      console.error('Error in TextParticle update:', err);
+      return false; // Remove this particle on error
     }
-    
-    // Gentle scale increase - different for repo names vs description words
-    let scaleFactor;
-    if (this.isRepoName) {
-      // Repo names grow more slowly
-      scaleFactor = 1 + (1 - this.life) * 0.3;
-    } else {
-      // Description words can grow a bit more
-      scaleFactor = 1 + (1 - this.life) * 0.5;
-    }
-    this.mesh.scale.set(this.scale * scaleFactor, this.scale * scaleFactor, this.scale * scaleFactor);
-    
-    // Return true if still alive, false if should be removed
-    return this.life > 0;
   }
 }
 
 // Create exploding text effect for repositories
 function createExplodingRepoText(position, repo) {
-  console.log("Showing repo:", repo.name, repo.description);
-  
-  // Move repo name to a better viewing position - centered and higher
-  const namePosition = position.clone();
-  namePosition.y += 1.5; // Raise it up above where it was collected
-  namePosition.z -= 1; // Bring slightly closer to camera for emphasis
+  try {
+    if (!repo || !position) {
+      console.error('Invalid repo or position for exploding text');
+      return;
+    }
+    
+    console.log("Showing repo:", 
+      repo.name || 'Unnamed', 
+      repo.description || 'No description');
+    
+    // Move repo name to a better viewing position - centered and higher
+    const namePosition = position.clone();
+    namePosition.y += 1.5; // Raise it up above where it was collected
+    namePosition.z -= 1; // Bring slightly closer to camera for emphasis
 
-  // Create particle for repo name with isRepoName flag set to true
-  const nameParticle = new TextParticle(repo.name.toUpperCase(), namePosition, repo.color, true);
-  
-  // Add repo name particle to scene
-  scene.add(nameParticle.mesh);
-  explodingTexts.push(nameParticle);
-  
-  // Get description words and process them
-  const descWords = repo.description.split(' ');
-  const maxDescWords = Math.min(descWords.length, 15); // Allow more words with better visibility
-  
-  // Create a more structured layout for description words
-  const wordWidthApprox = 0.6; // Approximate width per word for spacing
-  const wordsPerRow = 4; // Number of words per row
-  const rowHeight = 0.8; // Height between rows
-  
-  for (let i = 0; i < maxDescWords; i++) {
-    // Create a longer delay for better reading
-    setTimeout(() => {
-      if (gameOver) return; // Don't add new particles if game is over
-      
-      const word = descWords[i];
-      if (!word || word.trim().length === 0) return;
-      
-      // Calculate grid position for words
-      const row = Math.floor(i / wordsPerRow);
-      const col = i % wordsPerRow;
-      
-      // Position words in a more readable grid under the repo name
-      const wordPosition = position.clone();
-      wordPosition.x += (col - (wordsPerRow-1)/2) * wordWidthApprox; // Center horizontally
-      wordPosition.y += 0.5 - (row * rowHeight); // Stack vertically below repo name
-      wordPosition.z -= 0.5; // Slightly in front of the collection point
-      
-      // Add a little bit of randomness to prevent perfect grid
-      wordPosition.x += (Math.random() - 0.5) * 0.2;
-      wordPosition.y += (Math.random() - 0.5) * 0.1;
-      
-      // Create particle for this word with isRepoName = false
-      const wordColor = neonColors[Math.floor(Math.random() * neonColors.length)];
-      const wordParticle = new TextParticle(word, wordPosition, wordColor, false);
-      
-      scene.add(wordParticle.mesh);
-      explodingTexts.push(wordParticle);
-    }, 500 + i * 150); // Longer initial delay, plus slightly longer stagger for reading
-  }
-  
-  // Add language and stars information if available
-  if (repo.language || repo.stars) {
-    setTimeout(() => {
-      if (gameOver) return;
-      
-      let infoText = '';
-      if (repo.language) infoText += `[${repo.language}]`;
-      if (repo.stars && repo.stars > 0) infoText += ` ★ ${repo.stars}`;
-      
-      if (infoText) {
-        // Position below the repository name
-        const infoPosition = namePosition.clone();
-        infoPosition.y -= 0.6;
+    // Ensure repo name is valid
+    const repoName = repo.name ? String(repo.name).toUpperCase() : 'UNNAMED REPO';
+    
+    // Create particle for repo name with isRepoName flag set to true
+    const nameParticle = new TextParticle(repoName, namePosition, repo.color || 0xffff00, true);
+    
+    // Only add to scene if mesh was created successfully
+    if (nameParticle.mesh) {
+      scene.add(nameParticle.mesh);
+      explodingTexts.push(nameParticle);
+    }
+    
+    // Get description words and process them
+    const description = repo.description || 'No description available';
+    const descWords = description.split(' ');
+    const maxDescWords = Math.min(descWords.length, 12); // Limit for performance
+    
+    // Create a more structured layout for description words
+    const wordWidthApprox = 0.6; // Approximate width per word for spacing
+    const wordsPerRow = 4; // Number of words per row
+    const rowHeight = 0.8; // Height between rows
+    
+    for (let i = 0; i < maxDescWords; i++) {
+      // Create a longer delay for better reading
+      setTimeout(() => {
+        // Don't check gameOver here anymore as we removed that functionality
         
-        // Create info text particle with eye-catching color
-        const infoParticle = new TextParticle(infoText, infoPosition, 0xffff00, false);
-        scene.add(infoParticle.mesh);
-        explodingTexts.push(infoParticle);
-      }
-    }, 300); // Show shortly after repo name
+        const word = descWords[i];
+        if (!word || word.trim().length === 0) return;
+        
+        // Calculate grid position for words
+        const row = Math.floor(i / wordsPerRow);
+        const col = i % wordsPerRow;
+        
+        // Position words in a more readable grid under the repo name
+        const wordPosition = position.clone();
+        wordPosition.x += (col - (wordsPerRow-1)/2) * wordWidthApprox; // Center horizontally
+        wordPosition.y += 0.5 - (row * rowHeight); // Stack vertically below repo name
+        wordPosition.z -= 0.5; // Slightly in front of the collection point
+        
+        // Add a little bit of randomness to prevent perfect grid
+        wordPosition.x += (Math.random() - 0.5) * 0.2;
+        wordPosition.y += (Math.random() - 0.5) * 0.1;
+        
+        // Create particle for this word with isRepoName = false
+        const wordColor = neonColors[Math.floor(Math.random() * neonColors.length)];
+        const wordParticle = new TextParticle(word, wordPosition, wordColor, false);
+        
+        if (wordParticle.mesh) {
+          scene.add(wordParticle.mesh);
+          explodingTexts.push(wordParticle);
+        }
+      }, 500 + i * 150); // Longer initial delay, plus slightly longer stagger for reading
+    }
+    
+    // Add language and stars information if available
+    if (repo.language || repo.stars) {
+      setTimeout(() => {
+        let infoText = '';
+        if (repo.language) infoText += `[${repo.language}]`;
+        if (repo.stars && repo.stars > 0) infoText += ` ★ ${repo.stars}`;
+        
+        if (infoText) {
+          // Position below the repository name
+          const infoPosition = namePosition.clone();
+          infoPosition.y -= 0.6;
+          
+          // Create info text particle with eye-catching color
+          const infoParticle = new TextParticle(infoText, infoPosition, 0xffff00, false);
+          
+          if (infoParticle.mesh) {
+            scene.add(infoParticle.mesh);
+            explodingTexts.push(infoParticle);
+          }
+        }
+      }, 300); // Show shortly after repo name
+    }
+  } catch (err) {
+    console.error('Error creating repo text effect:', err);
   }
 }
 
@@ -1450,109 +1522,194 @@ function refreshGame() {
 
 // Animation loop
 function animate() {
-  animationId = requestAnimationFrame(animate);
-  
-  // Always animate grid and sun, even before game starts
-  // Move and animate grid
-  gridHelper.position.z += gameStarted ? speed : 0.1;
-  if (gridHelper.position.z > 0) {
-    gridHelper.position.z = -1000;
-  }
-  
-  // Move the retro sun and stars
-  sun.rotation.z += 0.005;
-  
-  // Update exploding text particles
-  for (let i = explodingTexts.length - 1; i >= 0; i--) {
-    const textParticle = explodingTexts[i];
-    const isAlive = textParticle.update();
+  try {
+    animationId = requestAnimationFrame(animate);
     
-    if (!isAlive) {
-      // Remove dead particles from scene and array
-      scene.remove(textParticle.mesh);
-      explodingTexts.splice(i, 1);
-    }
-  }
-  
-  if (gameStarted) {
-    // Move player to target lane
-    player.position.x += (lanes[currentLane] - player.position.x) * 0.1;
-    
-    // Rotate wheels or add hover effect
-    if (player.children && player.children.length > 0) {
-      player.children.forEach(child => {
-        // Add slight bobbing motion to simulate hovering
-        child.position.y = Math.sin(Date.now() * 0.005) * 0.03;
-      });
-    }
-    
-    // Move obstacles
-    obstacles.forEach(obstacle => {
-      obstacle.position.z += speed;
-      
-      // Different rotation effects based on obstacle type
-      if (obstacle.children && obstacle.children[0].geometry) {
-        // For group objects
-        obstacle.rotation.z += 0.03;
+    // Always animate grid and sun, even before game starts
+    // Move and animate grid
+    if (gridHelper) {
+      gridHelper.position.z += gameStarted ? speed : 0.1;
+      if (gridHelper.position.z > 0) {
+        gridHelper.position.z = -1000;
       }
-    });
-    
-    // Move collectibles
-    collectibles.forEach(collectible => {
-      collectible.position.z += speed;
-      
-      // Check for special animation function
-      if (collectible.userData && collectible.userData.animate) {
-        collectible.userData.animate(Date.now());
-      } else {
-        // Different animation based on collectible type
-        collectible.rotation.y += 0.02;
-      }
-      
-      // Floating effect
-      collectible.position.y = 0.5 + Math.sin(Date.now() * 0.002 + collectible.position.x) * 0.2;
-    });
-    
-    // Create more collectibles and fewer obstacles to focus on showcasing repos
-    if (Math.random() < 0.01 + level * 0.002) {
-      createObstacle();
     }
     
-    if (Math.random() < 0.025 + level * 0.003) { // Higher chance of collectibles
-      createCollectible();
+    // Move the retro sun and stars
+    if (sun) {
+      sun.rotation.z += 0.005;
     }
-    
-    // Check collisions
-    checkCollisions();
-    
-    // Reload repos if needed - check more often
-    if (githubRepos.length < 5 && Math.random() < 0.02) {
-      fetchGitHubRepos().then(repos => {
-        if (repos.length > 0) {
-          githubRepos = repos;
-          console.log('Reloaded GitHub repos:', githubRepos.length);
+  
+    // Update exploding text particles
+    for (let i = explodingTexts.length - 1; i >= 0; i--) {
+      try {
+        const textParticle = explodingTexts[i];
+        if (!textParticle || !textParticle.update) {
+          // Invalid particle, remove it
+          console.warn('Invalid text particle found, removing');
+          if (textParticle && textParticle.mesh) {
+            scene.remove(textParticle.mesh);
+          }
+          explodingTexts.splice(i, 1);
+          continue;
         }
-      });
+        
+        const isAlive = textParticle.update();
+        
+        if (!isAlive) {
+          // Remove dead particles from scene and array
+          if (textParticle.mesh) {
+            scene.remove(textParticle.mesh);
+          }
+          explodingTexts.splice(i, 1);
+        }
+      } catch (err) {
+        console.error('Error updating text particle:', err);
+        // Remove problematic particle
+        try {
+          if (explodingTexts[i] && explodingTexts[i].mesh) {
+            scene.remove(explodingTexts[i].mesh);
+          }
+        } catch (e) {
+          // Ignore further errors in cleanup
+        }
+        explodingTexts.splice(i, 1);
+      }
     }
+    
+    if (gameStarted) {
+      // Move player to target lane if player exists
+      if (player) {
+        player.position.x += (lanes[currentLane] - player.position.x) * 0.1;
+        
+        // Rotate wheels or add hover effect
+        if (player.children && player.children.length > 0) {
+          player.children.forEach(child => {
+            try {
+              // Add slight bobbing motion to simulate hovering
+              child.position.y = Math.sin(Date.now() * 0.005) * 0.03;
+            } catch (e) {
+              console.error('Error updating player child:', e);
+            }
+          });
+        }
+      }
+      
+      // Move obstacles with error handling
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        try {
+          const obstacle = obstacles[i];
+          obstacle.position.z += speed;
+          
+          // Different rotation effects based on obstacle type
+          if (obstacle.children && obstacle.children[0] && obstacle.children[0].geometry) {
+            // For group objects
+            obstacle.rotation.z += 0.03;
+          }
+        } catch (err) {
+          console.error('Error updating obstacle:', err);
+          // Remove problematic obstacle
+          if (obstacles[i]) {
+            try {
+              scene.remove(obstacles[i]);
+            } catch (e) {
+              // Ignore further errors
+            }
+            obstacles.splice(i, 1);
+          }
+        }
+      }
+      
+      // Move collectibles with error handling
+      for (let i = collectibles.length - 1; i >= 0; i--) {
+        try {
+          const collectible = collectibles[i];
+          collectible.position.z += speed;
+          
+          // Check for special animation function
+          if (collectible.userData && collectible.userData.animate) {
+            collectible.userData.animate(Date.now());
+          } else {
+            // Different animation based on collectible type
+            collectible.rotation.y += 0.02;
+          }
+          
+          // Floating effect
+          collectible.position.y = 0.5 + Math.sin(Date.now() * 0.002 + collectible.position.x) * 0.2;
+        } catch (err) {
+          console.error('Error updating collectible:', err);
+          // Remove problematic collectible
+          if (collectibles[i]) {
+            try {
+              scene.remove(collectibles[i]);
+            } catch (e) {
+              // Ignore further errors
+            }
+            collectibles.splice(i, 1);
+          }
+        }
+      }
+      
+      // Create more collectibles and fewer obstacles to focus on showcasing repos
+      try {
+        if (Math.random() < 0.01 + level * 0.002) {
+          createObstacle();
+        }
+        
+        if (Math.random() < 0.025 + level * 0.003) { // Higher chance of collectibles
+          createCollectible();
+        }
+        
+        // Check collisions
+        checkCollisions();
+      } catch (err) {
+        console.error('Error in game logic:', err);
+      }
+      
+      // Reload repos if needed - check more often
+      if (githubRepos.length < 5 && Math.random() < 0.02) {
+        fetchGitHubRepos().then(repos => {
+          if (repos && repos.length > 0) {
+            githubRepos = repos;
+            console.log('Reloaded GitHub repos:', githubRepos.length);
+          }
+        }).catch(err => {
+          console.error('Error fetching GitHub repos:', err);
+        });
+      }
+    }
+    
+    // Render scene
+    if (renderer && scene && camera) {
+      renderer.render(scene, camera);
+    }
+  } catch (err) {
+    console.error('Critical error in animation loop:', err);
+    // Try to recover by requesting next frame
+    requestAnimationFrame(animate);
   }
-  
-  // Render scene
-  renderer.render(scene, camera);
 }
 
 // Initialize the game when the page loads with safety checks
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM content loaded, starting initialization...');
+  
   // Check for THREE before trying to initialize
   if (typeof THREE === 'undefined') {
     console.error('THREE is not defined! Attempting to load Three.js directly...');
     
     // Try to load Three.js dynamically
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js'; // Use newer version
     script.onload = function() {
       console.log('Three.js loaded successfully!');
       // Initialize game after loading
-      init();
+      try {
+        init();
+        console.log('Game initialized successfully');
+      } catch (err) {
+        console.error('Error during game initialization:', err);
+        alert('Error initializing game. Please check the console for details.');
+      }
     };
     script.onerror = function() {
       console.error('Failed to load Three.js dynamically');
@@ -1562,7 +1719,13 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     // THREE is available, initialize normally
     console.log('THREE is already defined, initializing game...');
-    init();
+    try {
+      init();
+      console.log('Game initialized successfully');
+    } catch (err) {
+      console.error('Error during game initialization:', err);
+      alert('Error initializing game. Please check the console for details.');
+    }
   }
 });
 

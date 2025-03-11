@@ -14,6 +14,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- Three.js for 3D Game - stable version directly from Three.js -->
-    <script src="https://threejs.org/build/three.min.js"></script>
+    <!-- Three.js for 3D Game - specific stable version -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+    
+    <!-- Add error handler for Three.js loading -->
+    <script>
+      window.addEventListener('error', function(event) {
+        if (event.filename && event.filename.includes('three')) {
+          console.error('Error loading Three.js:', event.message);
+          alert('Error loading Three.js library. Please refresh the page or try a different browser.');
+        }
+      });
+    </script>
 </head>
