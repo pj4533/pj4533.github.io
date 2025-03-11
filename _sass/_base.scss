@@ -13,7 +13,7 @@ dl, dd, ol, ul, figure {
 /**
  * Basic styling
  */
-body {
+html, body {
     font-family: $base-font-family;
     font-size: $base-font-size;
     line-height: $base-line-height;
@@ -21,6 +21,10 @@ body {
     color: $text-color;
     background-color: $background-color;
     -webkit-text-size-adjust: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent scrolling */
 }
 
 
@@ -200,5 +204,27 @@ pre {
         path {
             fill: $grey-color;
         }
+    }
+}
+
+/**
+ * Buttons
+ */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: $brand-color;
+    color: white !important;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+    
+    &:hover {
+        background-color: darken($brand-color, 10%);
+        text-decoration: none;
+    }
+    
+    &:visited {
+        color: white;
     }
 }

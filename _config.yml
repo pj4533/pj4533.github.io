@@ -1,14 +1,15 @@
 # Site settings
-title: Say Goodnight Software
+title: PJ Gray
 email: pj@pj4533.com
+description: "Software Engineer"
 baseurl: "" # the subpath of your site, e.g. /blog/
-url: "http://saygoodnight.com" # the base hostname & protocol for your site
+url: "https://saygoodnight.com" # the base hostname & protocol for your site
 twitter_username: pj4533
-github_username:  pj4533
+github_username: pj4533
 linkedin_username: pj4533
 
 # Build settings
 markdown: kramdown
-gems:
+plugins:
   - jekyll-gist
   - jekyll-seo-tag
