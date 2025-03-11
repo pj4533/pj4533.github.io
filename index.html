@@ -64,15 +64,24 @@ async function fetchGitHubRepos() {
     const repos = await response.json();
     console.log('Fetched repos:', repos.length);
     
-    // Filter out forks and repos without descriptions
+    // Filter out forks, repos without descriptions, and repos with unusual names/languages
     const filteredRepos = repos
-      .filter(repo => !repo.fork && repo.description && repo.description.trim() !== '')
+      .filter(repo => {
+        // Skip forks, empty descriptions, and repos with unusual names
+        return !repo.fork && 
+               repo.description && 
+               repo.description.trim() !== '' &&
+               repo.name && 
+               repo.name.length > 1 && // Skip very short names
+               !/^\[.*\]$/.test(repo.name); // Skip names that are just brackets
+      })
       .map(repo => ({
         name: repo.name,
         description: repo.description,
         url: repo.html_url,
         stars: repo.stargazers_count,
-        language: repo.language,
+        // Handle unusual language values
+        language: (repo.language && repo.language.toLowerCase() !== 'shift') ? repo.language : null,
         updated_at: repo.updated_at,
         pushed_at: repo.pushed_at, // When the repo was last pushed to
         color: neonColors[Math.floor(Math.random() * neonColors.length)]
@@ -389,10 +398,16 @@ function createExplodingRepoText(position, repo) {
     if (repo.language || repo.stars) {
       setTimeout(() => {
         let infoText = '';
-        if (repo.language) infoText += `[${repo.language}]`;
+        // Only add language if it exists and isn't unusual
+        if (repo.language && repo.language.length > 1 && repo.language.toLowerCase() !== 'shift') {
+          infoText += `[${repo.language}]`;
+        }
+        
+        // Add stars if available
         if (repo.stars && repo.stars > 0) infoText += ` ★ ${repo.stars}`;
         
-        if (infoText) {
+        // Only proceed if we have valid info text
+        if (infoText && infoText.trim() !== '') {
           // Position directly below the repository name for better organization
           const infoPosition = namePosition.clone();
           infoPosition.y -= 0.8; // Position further down without description words
@@ -1191,7 +1206,7 @@ function checkCollisions() {
     };
   }
   const currentTime = Date.now();
-  const REPO_DISPLAY_COOLDOWN = 5000; // Minimum 5 seconds between repo displays
+  const REPO_DISPLAY_COOLDOWN = 2000; // Minimum 2 seconds between repo displays
 
   // Check collectible collisions
   for (let i = collectibles.length - 1; i >= 0; i--) {
