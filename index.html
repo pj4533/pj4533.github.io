@@ -141,12 +141,12 @@ class TextParticle {
     // Much larger scale, especially for repo names
     this.scale = isRepoName ? 2.5 : 1.5;
     
-    // Longer life and slower fade for better readability
+    // Longer life and even slower fade for better readability
     this.life = 1.0;
-    this.lifeSpeed = isRepoName ? 0.005 : 0.01; // 4-8x slower fade
+    this.lifeSpeed = isRepoName ? 0.003 : 0.007; // Even slower fade
     
-    // Delay fading for repo names to ensure they can be read
-    this.delayFade = isRepoName ? 60 : 20; // Frames before starting to fade
+    // Longer delay before fading for better readability
+    this.delayFade = isRepoName ? 90 : 30; // More frames before starting to fade
     
     this.createMesh();
   }
@@ -185,9 +185,9 @@ class TextParticle {
       // Clear canvas
       context.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Add stronger glow effect
+      // Less blurry glow effect with better clarity
       context.shadowColor = `#${hexColor}`;
-      context.shadowBlur = 25; // Increased blur for more prominent glow
+      context.shadowBlur = 18; // Reduced blur for less blurriness while keeping glow
       context.shadowOffsetX = 0;
       context.shadowOffsetY = 0;
       
@@ -212,9 +212,9 @@ class TextParticle {
         // Reset fill style to gradient
         context.fillStyle = gradient;
         
-        // Add extra glow passes for repo names
-        for (let i = 0; i < 3; i++) {
-          context.shadowBlur = 20 - i * 5;
+        // Add clearer glow passes for repo names (fewer passes with less blur)
+        for (let i = 0; i < 2; i++) {
+          context.shadowBlur = 15 - i * 5;
           context.shadowColor = `#${hexColor}`;
           context.strokeText(safeText, canvas.width / 2, canvas.height / 2);
         }
@@ -226,10 +226,10 @@ class TextParticle {
       context.strokeText(safeText, textX, textY);
       context.fillText(safeText, textX, textY);
       
-      // Create texture from canvas
+      // Create texture from canvas (optimized settings)
       const texture = new THREE.CanvasTexture(canvas);
       texture.minFilter = THREE.LinearFilter;
-      texture.anisotropy = 8; // Higher anisotropy for better text quality at angles
+      texture.anisotropy = 4; // Reduced anisotropy for better performance while maintaining quality
       
       // Create material with transparency
       const material = new THREE.MeshBasicMaterial({
@@ -379,16 +379,17 @@ function createExplodingRepoText(position, repo) {
     const descWords = description.split(' ');
     const maxDescWords = Math.min(descWords.length, 12); // Limit for performance
     
-    // Create a more structured layout for description words
+    // Create a more structured layout for description words (with performance optimizations)
     const wordWidthApprox = 0.6; // Approximate width per word for spacing
     const wordsPerRow = 4; // Number of words per row
     const rowHeight = 0.8; // Height between rows
     
-    for (let i = 0; i < maxDescWords; i++) {
+    // Calculate and limit the maximum words to show for better performance
+    const wordLimit = Math.min(maxDescWords, 8); // Limit description words for performance
+    
+    for (let i = 0; i < wordLimit; i++) {
       // Create a longer delay for better reading
       setTimeout(() => {
-        // Don't check gameOver here anymore as we removed that functionality
-        
         const word = descWords[i];
         if (!word || word.trim().length === 0) return;
         
@@ -402,9 +403,9 @@ function createExplodingRepoText(position, repo) {
         wordPosition.y += 0.5 - (row * rowHeight); // Stack vertically below repo name
         wordPosition.z -= 0.5; // Slightly in front of the collection point
         
-        // Add a little bit of randomness to prevent perfect grid
-        wordPosition.x += (Math.random() - 0.5) * 0.2;
-        wordPosition.y += (Math.random() - 0.5) * 0.1;
+        // Add a smaller amount of randomness (better readability)
+        wordPosition.x += (Math.random() - 0.5) * 0.15;
+        wordPosition.y += (Math.random() - 0.5) * 0.08;
         
         // Create particle for this word with isRepoName = false
         const wordColor = neonColors[Math.floor(Math.random() * neonColors.length)];
@@ -596,7 +597,7 @@ function handleKeyDown(event) {
   }
 }
 
-// Create starfield backdrop
+// Create starfield backdrop (optimized)
 function createStarfield() {
   const starGeometry = new THREE.BufferGeometry();
   const starMaterial = new THREE.PointsMaterial({
@@ -605,7 +606,8 @@ function createStarfield() {
   });
   
   const starVertices = [];
-  for (let i = 0; i < 1000; i++) {
+  // Reduced number of stars for better performance
+  for (let i = 0; i < 700; i++) {
     const x = (Math.random() - 0.5) * 100;
     const y = (Math.random() - 0.5) * 100;
     const z = -Math.random() * 100;
@@ -1261,25 +1263,34 @@ function checkCollisions() {
   }
 }
 
-// Create explosion effect when player hits obstacle
+// Create explosion effect when player hits obstacle (optimized)
 function createExplosion(x, y, z) {
-  const particleCount = 30;
+  const particleCount = 15; // Reduced by half for better performance
   const particles = [];
+  
+  // Reuse geometries and materials for better performance
+  const particleGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+  const particleMaterial1 = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 1
+  });
+  const particleMaterial2 = new THREE.MeshBasicMaterial({
+    color: 0xff00ff,
+    transparent: true,
+    opacity: 1
+  });
   
   for (let i = 0; i < particleCount; i++) {
     const particle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 0.1, 0.1),
-      new THREE.MeshBasicMaterial({
-        color: Math.random() > 0.5 ? 0xff0000 : 0xff00ff,
-        transparent: true,
-        opacity: 1
-      })
+      particleGeometry,
+      i % 2 === 0 ? particleMaterial1 : particleMaterial2
     );
     
     particle.position.set(x, y, z);
     particle.velocity = {
       x: (Math.random() - 0.5) * 0.2,
-      y: (Math.random() - 0.5) * 0.2,
+      y: (Math.random() - 0.5) * 0.2, 
       z: (Math.random() - 0.5) * 0.2
     };
     
@@ -1311,10 +1322,10 @@ function createExplosion(x, y, z) {
   animateParticles();
 }
 
-// Create collection effect when player picks up collectible
+// Create collection effect when player picks up collectible (optimized)
 function createCollectionEffect(x, y, z) {
-  // Create expanding ring
-  const ringGeometry = new THREE.RingGeometry(0.1, 0.15, 32);
+  // Create expanding ring (simplified geometry for performance)
+  const ringGeometry = new THREE.RingGeometry(0.1, 0.15, 16); // Reduced segments
   const ringMaterial = new THREE.MeshBasicMaterial({
     color: 0x00ffff,
     side: THREE.DoubleSide,
@@ -1327,19 +1338,29 @@ function createCollectionEffect(x, y, z) {
   ring.rotation.y = Math.PI / 2;
   scene.add(ring);
   
-  // Create particles burst effect
-  const particleCount = 10; // Reduced for better performance
+  // Create particles burst effect - fewer particles for better performance
+  const particleCount = 6; // Further reduced for better performance
   const particles = [];
   
+  // Reuse geometries and materials for better performance
+  const particleGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+  const particleMaterial1 = new THREE.MeshBasicMaterial({
+    color: 0x00ffff,
+    transparent: true,
+    opacity: 1
+  });
+  const particleMaterial2 = new THREE.MeshBasicMaterial({
+    color: 0xff00ff,
+    transparent: true,
+    opacity: 1
+  });
+  
   for (let i = 0; i < particleCount; i++) {
-    const particleGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-    const particleMaterial = new THREE.MeshBasicMaterial({
-      color: Math.random() > 0.5 ? 0x00ffff : 0xff00ff,
-      transparent: true,
-      opacity: 1
-    });
+    const particle = new THREE.Mesh(
+      particleGeometry, 
+      i % 2 === 0 ? particleMaterial1 : particleMaterial2
+    );
     
-    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
     particle.position.set(x, y, z);
     particle.velocity = {
       x: (Math.random() - 0.5) * 0.1,
@@ -1351,7 +1372,7 @@ function createCollectionEffect(x, y, z) {
     particles.push(particle);
   }
   
-  // Add point light flash
+  // Add point light flash (same as before)
   const pointLight = new THREE.PointLight(0xffffff, 2, 5);
   pointLight.position.set(x, y, z);
   scene.add(pointLight);
