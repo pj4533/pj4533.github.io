@@ -16,8 +16,8 @@ layout: default
     <div id="game-ui-bottom">
       <div id="instructions">
         ← → to move left/right <br>
-        Catch the neon shapes to discover my GitHub projects and profile <br>
-        GitHub profile data (green pyramids) and projects updated in real-time
+        Catch the neon shapes to discover my GitHub projects and resume <br>
+        GitHub data (green octahedrons) and resume data (orange octahedrons)
       </div>
     </div>
   </div>
@@ -50,8 +50,8 @@ let githubRepos = []; // Will hold the GitHub repository data
 let profileData = []; // Will hold the GitHub profile data
 let explodingTexts = []; // Will hold the exploding text particles
 
-// Since we can't get real LinkedIn data through API (which would require auth),
-// we're going to replace this with GitHub profile data instead
+// This function gets GitHub profile data and combines it with resume information
+// Resume data is hardcoded from actual resume provided by PJ Gray
 async function fetchGitHubProfileData() {
   try {
     console.log('Fetching GitHub profile data instead of LinkedIn...');
@@ -114,7 +114,64 @@ async function fetchGitHubProfileData() {
       }))
     };
     
-    return profileData;
+    // Add resume data to complement GitHub data
+    // This data is from PJ's actual resume (shared explicitly for this purpose)
+    const resumeData = {
+      experience: [
+        {
+          company: "Evertrue",
+          location: "Boston, MA/Remote",
+          title: "Sr. Principal Software Engineer",
+          period: "NOV 2011 - PRESENT",
+          description: "Architect, write, maintain and ship the iOS platform for all mobile applications at Evertrue. Initially using Objective C, transitioning to Swift, spread across several reusable shared libraries, including SiriKit and Spotlight search extensions."
+        },
+        {
+          company: "Avid Technology",
+          location: "Burlington, MA",
+          title: "Principal Software Engineer",
+          period: "DEC 1997 - OCT 2011",
+          description: "Windows and Mac programming, specifically in the video domain. Wrote low level video player code, developed user interfaces, and debugged issues around video formats, frame rates and memory usage."
+        },
+        {
+          company: "Say Goodnight Software",
+          location: "",
+          title: "Owner/Developer",
+          period: "AUG 2008 - PRESENT",
+          description: "My on-the-side iOS development company."
+        }
+      ],
+      skills: [
+        "Apple Ecosystem",
+        "DJ/Vinyl Collector",
+        "Eurorack Synthesizers"
+      ],
+      awards: [
+        {
+          name: "Review & Approval System Patent",
+          number: "11/020,616",
+          date: "Issued Jun 2009"
+        },
+        {
+          name: "Voice Description of Time Based Media for indexing and searching Patent",
+          number: "US20130007043",
+          date: "Issued Jun 2011"
+        }
+      ],
+      education: {
+        school: "Missouri University of Science & Technology",
+        degree: "BS, Computer Science",
+        period: "1993 - 1997"
+      },
+      location: "Stanfordville, NY / Hudson Valley, NY"
+    };
+    
+    // Add GitHub profile data (already collected)
+    const combinedData = {
+      ...profileData,
+      resumeData
+    };
+    
+    return combinedData;
   } catch (error) {
     console.error('Error fetching GitHub profile:', error);
     // Return empty data structure if fetch fails
@@ -124,14 +181,16 @@ async function fetchGitHubProfileData() {
       login: "pj4533",
       bio: "",
       languages: [],
-      repos: []
+      repos: [],
+      resumeData: null
     };
   }
 }
 
-// Transform GitHub profile data into collectible items for the game
+// Transform GitHub profile data and resume data into collectible items for the game
 function processGitHubProfileData(data) {
   const items = [];
+  const resumeColor = 0xff5700; // Orange color for resume data
   
   // Process profile information
   if (data.name) {
@@ -144,8 +203,17 @@ function processGitHubProfileData(data) {
     });
   }
   
-  // Process location/company information
-  if (data.location || data.company) {
+  // Process location information from resume (prioritize resume data)
+  if (data.resumeData && data.resumeData.location) {
+    items.push({
+      name: data.resumeData.location,
+      description: "Location",
+      details: "Hudson Valley, New York",
+      type: "location",
+      color: resumeColor,
+      source: "resume"
+    });
+  } else if (data.location || data.company) {
     items.push({
       name: data.location || "Location",
       description: data.company || "",
@@ -155,7 +223,7 @@ function processGitHubProfileData(data) {
     });
   }
   
-  // Process stats information
+  // Process stats information from GitHub
   items.push({
     name: "GitHub Stats",
     description: `${data.public_repos} Repositories`,
@@ -177,6 +245,80 @@ function processGitHubProfileData(data) {
         color: 0x6cc644 // GitHub green
       });
     }
+  }
+  
+  // Add current job from resume data
+  if (data.resumeData && data.resumeData.experience && data.resumeData.experience.length > 0) {
+    const currentJob = data.resumeData.experience[0]; // First job is current (Evertrue)
+    items.push({
+      name: currentJob.company,
+      description: currentJob.title,
+      details: `${currentJob.period} • ${currentJob.location}`,
+      type: "job",
+      color: resumeColor,
+      source: "resume"
+    });
+    
+    // Add job description separately for readability
+    items.push({
+      name: "Current Role",
+      description: currentJob.company,
+      details: currentJob.description,
+      type: "job_details",
+      color: resumeColor,
+      source: "resume"
+    });
+    
+    // Add other jobs
+    data.resumeData.experience.slice(1).forEach(job => {
+      items.push({
+        name: job.company,
+        description: job.title,
+        details: `${job.period} • ${job.location}`,
+        type: "job",
+        color: resumeColor,
+        source: "resume"
+      });
+    });
+  }
+  
+  // Add skills from resume
+  if (data.resumeData && data.resumeData.skills && data.resumeData.skills.length > 0) {
+    items.push({
+      name: "Skills & Interests",
+      description: data.resumeData.skills.join(" • "),
+      details: "From Resume",
+      type: "skills",
+      color: resumeColor,
+      source: "resume"
+    });
+  }
+  
+  // Add education from resume
+  if (data.resumeData && data.resumeData.education) {
+    const edu = data.resumeData.education;
+    items.push({
+      name: edu.school,
+      description: edu.degree,
+      details: edu.period,
+      type: "education",
+      color: resumeColor,
+      source: "resume"
+    });
+  }
+  
+  // Add patents/awards from resume
+  if (data.resumeData && data.resumeData.awards && data.resumeData.awards.length > 0) {
+    data.resumeData.awards.forEach(award => {
+      items.push({
+        name: "Patent",
+        description: award.name,
+        details: `${award.number} • ${award.date}`,
+        type: "award",
+        color: resumeColor,
+        source: "resume"
+      });
+    });
   }
   
   // Add a few select repositories (already showing these elsewhere, but include top ones)
@@ -676,8 +818,11 @@ function createExplodingRepoText(position, item) {
       return;
     }
     
-    // Handle both GitHub profile and GitHub repo items
-    const isProfileItem = item.type && ['profile', 'location', 'stats', 'languages', 'featured_repo'].includes(item.type);
+    // Handle GitHub profile, resume data, and GitHub repo items
+    const isProfileItem = item.type && [
+      'profile', 'location', 'stats', 'languages', 'featured_repo', 
+      'job', 'job_details', 'skills', 'education', 'award'
+    ].includes(item.type);
     
     if (isProfileItem) {
       console.log("Showing GitHub Profile item:", 
@@ -695,13 +840,14 @@ function createExplodingRepoText(position, item) {
     namePosition.y += 0.8; // Slightly raised position
     namePosition.z -= 1; // Bring slightly closer to camera for emphasis
     
-    // For GitHub profile items, add special prefix based on type
+    // For profile items (both GitHub and resume), add special prefix based on type
     let displayName = item.name || 'Unnamed';
     let displayColor = item.color || 0xffff00;
     
     if (isProfileItem) {
-      // Use GitHub colors and add prefix by type
+      // Add prefix by type
       switch(item.type) {
+        // GitHub profile data
         case 'profile':
           displayName = `👤 ${displayName}`;
           break;
@@ -717,8 +863,27 @@ function createExplodingRepoText(position, item) {
         case 'featured_repo':
           displayName = `⭐ ${displayName}`;
           break;
+          
+        // Resume data
+        case 'job':
+          displayName = `🏢 ${displayName}`;
+          break;
+        case 'job_details':
+          displayName = `💼 ${displayName}`;
+          break;
+        case 'skills':
+          displayName = `🔧 ${displayName}`;
+          break;
+        case 'education':
+          displayName = `🎓 ${displayName}`;
+          break;
+        case 'award':
+          displayName = `🏆 ${displayName}`;
+          break;
       }
-      displayColor = 0x6cc644; // GitHub green for all profile items
+      
+      // Use the item's color (resume items use orange, GitHub items use green)
+      displayColor = item.color || 0x6cc644;
     }
 
     // Ensure name is valid and properly formatted
@@ -1357,20 +1522,37 @@ function createCollectible() {
       // If no profile data is available yet, just mark as profile source
       userData.dataSource = 'profile';
       userData.dataItem = {
-        name: "GitHub Profile",
+        name: "Profile Data",
         description: "Loading profile data...",
         type: "profile",
         color: 0x6cc644
       };
     }
     
-    // For profile items, use a special shape - holographic octahedron (GitHub shape)
+    // Get the item to determine color
+    const dataItem = userData.dataItem;
+    const isResumeItem = dataItem && dataItem.source === 'resume';
+    const itemColor = isResumeItem ? 0xff5700 : 0x6cc644; // Orange for resume, green for GitHub
+    const innerColor = isResumeItem ? 0xcc4400 : 0x2ea44f; // Darker variant
+    
+    // For profile items, use a special shape - holographic octahedron or diamond
     const pyramidGroup = new THREE.Group();
     
-    // Create outer wireframe with GitHub green color
-    const pyramidGeometry = new THREE.OctahedronGeometry(0.35, 0);
+    // Choose geometry based on source
+    let pyramidGeometry, innerGeometry;
+    if (isResumeItem) {
+      // Resume items use diamond shape (octahedron)
+      pyramidGeometry = new THREE.OctahedronGeometry(0.35, 0);
+      innerGeometry = new THREE.OctahedronGeometry(0.25, 0);
+    } else {
+      // GitHub items use octahedron shape
+      pyramidGeometry = new THREE.OctahedronGeometry(0.35, 0);
+      innerGeometry = new THREE.OctahedronGeometry(0.25, 0);
+    }
+    
+    // Create outer wireframe
     const pyramidMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0x6cc644, // GitHub green
+      color: itemColor,
       wireframe: true,
       transparent: true,
       opacity: 0.8
@@ -1378,30 +1560,34 @@ function createCollectible() {
     const pyramidWireframe = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
     pyramidGroup.add(pyramidWireframe);
     
-    // Create inner solid with GitHub colors
-    const innerGeometry = new THREE.OctahedronGeometry(0.25, 0);
+    // Create inner solid
     const innerMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0x2ea44f, // Darker GitHub green
+      color: innerColor,
       transparent: true,
       opacity: 0.3
     });
     const innerPyramid = new THREE.Mesh(innerGeometry, innerMaterial);
     pyramidGroup.add(innerPyramid);
     
-    // Add GitHub octocat symbol on one face
-    const addGitHubSymbol = () => {
+    // Add symbol on one face - GH for GitHub, CV for resume
+    const addSymbol = () => {
       // Create canvas for text
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
       canvas.width = 128;
       canvas.height = 128;
       
-      // Draw GitHub text
+      // Draw text based on source
       context.fillStyle = '#FFFFFF';
       context.font = 'bold 32px Arial';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
-      context.fillText('GH', 64, 64);
+      
+      if (isResumeItem) {
+        context.fillText('CV', 64, 64); // CV for resume/curriculum vitae
+      } else {
+        context.fillText('GH', 64, 64); // GH for GitHub
+      }
       
       // Create texture from canvas
       const texture = new THREE.CanvasTexture(canvas);
@@ -1423,10 +1609,10 @@ function createCollectible() {
       return textMesh;
     };
     
-    pyramidGroup.add(addGitHubSymbol());
+    pyramidGroup.add(addSymbol());
     
     // Add strong glow light
-    const pyramidLight = new THREE.PointLight(0x6cc644, 1.5, 3);
+    const pyramidLight = new THREE.PointLight(itemColor, 1.5, 3);
     pyramidLight.position.set(0, 0, 0);
     pyramidGroup.add(pyramidLight);
     
@@ -1436,7 +1622,7 @@ function createCollectible() {
     collectible.userData = {
       ...userData,
       animate: function(time) {
-        // Rotate the wireframe and inner octahedron differently
+        // Rotate the wireframe and inner shape differently
         pyramidWireframe.rotation.y += 0.01;
         innerPyramid.rotation.y -= 0.005;
         innerPyramid.rotation.x += 0.003;
@@ -2082,10 +2268,11 @@ function startGame() {
     setTimeout(() => {
       const center2 = new THREE.Vector3(2, 1.5, -5);
       const welcomeProfile = {
-        name: "CATCH GITHUB PROFILE",
-        description: "MY DEVELOPER STATS",
-        type: "profile",
-        color: 0x6cc644
+        name: "CATCH RESUME DATA",
+        description: "WORK HISTORY & SKILLS",
+        type: "job",
+        color: 0xff5700,
+        source: "resume"
       };
       createExplodingRepoText(center2, welcomeProfile);
       
