@@ -708,11 +708,20 @@ function createTrack() {
   track.position.z = -500;
   scene.add(track);
   
-  // Add 80s-style neon grid lines
+  // Add prominent 80s-style neon grid lines - main visual element
+  // Create multiple grid layers for more depth and visibility
   gridHelper = new THREE.GridHelper(100, 50, 0xff00ff, 0x00ffff);
-  gridHelper.position.y = 0.01;
+  gridHelper.position.y = 0.01; // Just above the track
   gridHelper.position.z = -500;
   scene.add(gridHelper);
+  
+  // Add secondary grid for enhanced visibility
+  const secondaryGrid = new THREE.GridHelper(200, 100, 0xff00ff, 0x00ffff);
+  secondaryGrid.position.y = -0.2; // Below the main grid
+  secondaryGrid.position.z = -800; // Further back
+  secondaryGrid.material.opacity = 0.4;
+  secondaryGrid.material.transparent = true;
+  scene.add(secondaryGrid);
   
   // Add lane markers
   for (let lane of lanes) {
@@ -1437,27 +1446,51 @@ function createCollectionEffect(x, y, z, showRepo = true) {
   animate();
 }
 
-// Flash grid effect when leveling up
+// Enhanced flash grid effect for visual impact
 function flashGrid() {
   const originalColors = [0xff00ff, 0x00ffff];
   let flashCount = 0;
   
+  // Find all grid helpers in the scene
+  const allGrids = [];
+  scene.traverse(child => {
+    if (child instanceof THREE.GridHelper) {
+      allGrids.push(child);
+    }
+  });
+  
   const flashInterval = setInterval(() => {
-    if (flashCount < 6) {
+    if (flashCount < 8) { // More flashes for emphasis
       if (flashCount % 2 === 0) {
-        // Flash to white
-        gridHelper.material[0].color.setHex(0xffffff);
-        gridHelper.material[1].color.setHex(0xffffff);
+        // Flash to bright white
+        allGrids.forEach(grid => {
+          if (grid.material && grid.material.length >= 2) {
+            grid.material[0].color.setHex(0xffffff);
+            grid.material[1].color.setHex(0xffffff);
+            // Increase line brightness temporarily
+            grid.material[0].opacity = 1;
+            grid.material[1].opacity = 1;
+          }
+        });
       } else {
         // Flash back to original colors
-        gridHelper.material[0].color.setHex(originalColors[0]);
-        gridHelper.material[1].color.setHex(originalColors[1]);
+        allGrids.forEach((grid, index) => {
+          if (grid.material && grid.material.length >= 2) {
+            grid.material[0].color.setHex(originalColors[0]);
+            grid.material[1].color.setHex(originalColors[1]);
+            // Reset opacity for secondary grids
+            if (grid !== gridHelper) {
+              grid.material[0].opacity = 0.4;
+              grid.material[1].opacity = 0.4;
+            }
+          }
+        });
       }
       flashCount++;
     } else {
       clearInterval(flashInterval);
     }
-  }, 100);
+  }, 120); // Slightly slower flash for better effect
 }
 
 // No game over functionality needed
@@ -1549,12 +1582,25 @@ function animate() {
     animationId = requestAnimationFrame(animate);
     
     // Always animate grid and sun, even before game starts
-    // Move and animate grid
+    // Move and animate grid - key visual element
     if (gridHelper) {
-      gridHelper.position.z += gameStarted ? speed : 0.1;
-      if (gridHelper.position.z > 0) {
+      // Move grid slightly faster for more dynamic effect
+      gridHelper.position.z += gameStarted ? speed * 1.2 : 0.15;
+      
+      // When grid moves too far forward, reset it far back to create endless effect
+      if (gridHelper.position.z > 100) { // Allow it to go further before resetting
         gridHelper.position.z = -1000;
       }
+      
+      // Ensure secondary grid is animated too (looking for any GridHelper in the scene)
+      scene.children.forEach(child => {
+        if (child instanceof THREE.GridHelper && child !== gridHelper) {
+          child.position.z += gameStarted ? speed * 0.8 : 0.1; // Move secondary grid slower
+          if (child.position.z > 200) {
+            child.position.z = -1200;
+          }
+        }
+      });
     }
     
     // Move the retro sun and stars
