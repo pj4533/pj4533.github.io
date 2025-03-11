@@ -89,29 +89,45 @@ async function fetchGitHubRepos() {
 
 // TextParticle class for exploding text
 class TextParticle {
-  constructor(text, position, color) {
+  constructor(text, position, color, isRepoName = false) {
     this.text = text;
     this.position = position.clone();
+    this.isRepoName = isRepoName; // Flag to identify if this is a repo name (for special treatment)
+    
+    // Slower and more subtle movement for better readability
     this.velocity = new THREE.Vector3(
-      (Math.random() - 0.5) * 0.3,
-      (Math.random() - 0.5) * 0.3 + 0.1, // Slight upward bias
-      (Math.random() - 0.5) * 0.3
-    );
-    this.rotation = new THREE.Vector3(
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2
-    );
-    this.rotationSpeed = new THREE.Vector3(
-      (Math.random() - 0.5) * 0.1,
-      (Math.random() - 0.5) * 0.1,
+      (Math.random() - 0.5) * 0.1, // Reduced horizontal movement
+      (Math.random() - 0.5) * 0.05 + 0.05, // Very gentle upward drift
       (Math.random() - 0.5) * 0.1
     );
+    
+    // Less rotation for better readability
+    this.rotation = new THREE.Vector3(
+      (Math.random() - 0.5) * 0.2, // Much less initial rotation
+      (Math.random() - 0.5) * 0.2,
+      (Math.random() - 0.5) * 0.2
+    );
+    
+    // Slower rotation for better readability
+    this.rotationSpeed = new THREE.Vector3(
+      (Math.random() - 0.5) * 0.02, // 5x slower rotation
+      (Math.random() - 0.5) * 0.02,
+      (Math.random() - 0.5) * 0.02
+    );
+    
     this.color = color;
     this.opacity = 1;
-    this.scale = 0.8 + Math.random() * 0.5;
-    this.life = 1.0; // Life from 1.0 to 0.0
-    this.lifeSpeed = 0.02 + Math.random() * 0.02;
+    
+    // Much larger scale, especially for repo names
+    this.scale = isRepoName ? 2.5 : 1.5;
+    
+    // Longer life and slower fade for better readability
+    this.life = 1.0;
+    this.lifeSpeed = isRepoName ? 0.005 : 0.01; // 4-8x slower fade
+    
+    // Delay fading for repo names to ensure they can be read
+    this.delayFade = isRepoName ? 60 : 20; // Frames before starting to fade
+    
     this.createMesh();
   }
 
@@ -119,8 +135,8 @@ class TextParticle {
     // Create canvas for text
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    canvas.width = 512; // Higher resolution for better text quality
-    canvas.height = 256;
+    canvas.width = 1024; // Double resolution for better text quality
+    canvas.height = 512;
     
     // Create a gradient for more appealing text
     const hexColor = this.color.toString(16).padStart(6, '0');
@@ -128,22 +144,49 @@ class TextParticle {
     gradient.addColorStop(0, `#${hexColor}`);
     gradient.addColorStop(1, '#ffffff');
     
-    // Set font properties on the context
-    context.font = 'bold 36px "JetBrains Mono", monospace';
+    // Set font properties on the context - much larger font
+    const fontSize = this.isRepoName ? 72 : 48; // Bigger font, especially for repo names
+    context.font = `bold ${fontSize}px "JetBrains Mono", monospace`;
     context.fillStyle = gradient;
     context.strokeStyle = '#000000';
-    context.lineWidth = 3;
+    context.lineWidth = 6; // Thicker outline for better readability
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     
     // Clear canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Add glow effect
+    // Add stronger glow effect
     context.shadowColor = `#${hexColor}`;
-    context.shadowBlur = 15;
+    context.shadowBlur = 25; // Increased blur for more prominent glow
     context.shadowOffsetX = 0;
     context.shadowOffsetY = 0;
+    
+    // For repository names, add extra visibility features
+    if (this.isRepoName) {
+      // Add a dark background box for better contrast
+      const textMetrics = context.measureText(this.text);
+      const textWidth = textMetrics.width;
+      const textHeight = fontSize * 1.2;
+      
+      context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      context.fillRect(
+        canvas.width/2 - textWidth/2 - 20,
+        canvas.height/2 - textHeight/2 - 10,
+        textWidth + 40,
+        textHeight + 20
+      );
+      
+      // Reset fill style to gradient
+      context.fillStyle = gradient;
+      
+      // Add extra glow passes for repo names
+      for (let i = 0; i < 3; i++) {
+        context.shadowBlur = 20 - i * 5;
+        context.shadowColor = `#${hexColor}`;
+        context.strokeText(this.text, canvas.width / 2, canvas.height / 2);
+      }
+    }
     
     // Draw text (first stroke for outline, then fill)
     const textX = canvas.width / 2;
@@ -154,7 +197,7 @@ class TextParticle {
     // Create texture from canvas
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
-    texture.anisotropy = 4; // Improve text quality at angles
+    texture.anisotropy = 8; // Higher anisotropy for better text quality at angles
     
     // Create material with transparency
     const material = new THREE.MeshBasicMaterial({
@@ -162,11 +205,13 @@ class TextParticle {
       transparent: true,
       opacity: this.opacity,
       side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending // Makes text blend better with background
+      blending: THREE.AdditiveBlending, // Makes text blend better with background
+      depthWrite: false, // Prevents z-fighting with other text
+      depthTest: true
     });
     
     // Create plane geometry for the text
-    const geometry = new THREE.PlaneGeometry(2, 1);
+    const geometry = new THREE.PlaneGeometry(3, 1.5); // Larger plane for text
     
     // Create mesh with geometry and material
     this.mesh = new THREE.Mesh(geometry, material);
@@ -175,26 +220,52 @@ class TextParticle {
     
     // Add the repo-text class
     this.mesh.userData.className = 'repo-text';
+    
+    // Always face the camera (billboard effect)
+    this.mesh.lookAt(camera.position);
   }
   
   update() {
-    // Update position
+    // Update position with gentle movement
     this.position.add(this.velocity);
     this.mesh.position.copy(this.position);
     
-    // Update rotation
+    // Slight rotation for subtle motion but not too much to make it hard to read
     this.rotation.x += this.rotationSpeed.x;
     this.rotation.y += this.rotationSpeed.y;
     this.rotation.z += this.rotationSpeed.z;
-    this.mesh.rotation.set(this.rotation.x, this.rotation.y, this.rotation.z);
     
-    // Update opacity
-    this.life -= this.lifeSpeed;
-    this.opacity = this.life;
-    this.mesh.material.opacity = this.opacity;
+    // Always look at camera first (billboard effect) then apply subtle rotation
+    this.mesh.lookAt(camera.position);
+    // Apply only Z rotation to keep text oriented correctly
+    this.mesh.rotateZ(this.rotation.z * 0.3);
     
-    // Update scale
-    const scaleFactor = 1 + (1 - this.life) * 0.5; // Gradually increase size
+    // Delayed fade effect - only start fading after delay
+    if (this.delayFade > 0) {
+      this.delayFade--;
+    } else {
+      this.life -= this.lifeSpeed;
+      
+      // For smoother fade out, especially for repo names
+      if (this.isRepoName) {
+        // Repo names stay fully visible longer
+        this.opacity = this.life > 0.7 ? 1.0 : this.life;
+      } else {
+        this.opacity = this.life;
+      }
+      
+      this.mesh.material.opacity = this.opacity;
+    }
+    
+    // Gentle scale increase - different for repo names vs description words
+    let scaleFactor;
+    if (this.isRepoName) {
+      // Repo names grow more slowly
+      scaleFactor = 1 + (1 - this.life) * 0.3;
+    } else {
+      // Description words can grow a bit more
+      scaleFactor = 1 + (1 - this.life) * 0.5;
+    }
     this.mesh.scale.set(this.scale * scaleFactor, this.scale * scaleFactor, this.scale * scaleFactor);
     
     // Return true if still alive, false if should be removed
@@ -204,35 +275,80 @@ class TextParticle {
 
 // Create exploding text effect for repositories
 function createExplodingRepoText(position, repo) {
-  // Create particles for repo name and description
-  const nameParticle = new TextParticle(repo.name, position, repo.color);
-  const descWords = repo.description.split(' ');
+  console.log("Showing repo:", repo.name, repo.description);
+  
+  // Move repo name to a better viewing position - centered and higher
+  const namePosition = position.clone();
+  namePosition.y += 1.5; // Raise it up above where it was collected
+  namePosition.z -= 1; // Bring slightly closer to camera for emphasis
+
+  // Create particle for repo name with isRepoName flag set to true
+  const nameParticle = new TextParticle(repo.name.toUpperCase(), namePosition, repo.color, true);
   
   // Add repo name particle to scene
   scene.add(nameParticle.mesh);
   explodingTexts.push(nameParticle);
   
-  // Create multiple particles for description (split into words)
-  for (let i = 0; i < Math.min(descWords.length, 10); i++) { // Limit to 10 words max
-    // Create a slight delay for each word
+  // Get description words and process them
+  const descWords = repo.description.split(' ');
+  const maxDescWords = Math.min(descWords.length, 15); // Allow more words with better visibility
+  
+  // Create a more structured layout for description words
+  const wordWidthApprox = 0.6; // Approximate width per word for spacing
+  const wordsPerRow = 4; // Number of words per row
+  const rowHeight = 0.8; // Height between rows
+  
+  for (let i = 0; i < maxDescWords; i++) {
+    // Create a longer delay for better reading
     setTimeout(() => {
       if (gameOver) return; // Don't add new particles if game is over
       
       const word = descWords[i];
-      const offset = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2
-      );
-      const wordParticle = new TextParticle(
-        word, 
-        position.clone().add(offset), 
-        neonColors[Math.floor(Math.random() * neonColors.length)]
-      );
+      if (!word || word.trim().length === 0) return;
+      
+      // Calculate grid position for words
+      const row = Math.floor(i / wordsPerRow);
+      const col = i % wordsPerRow;
+      
+      // Position words in a more readable grid under the repo name
+      const wordPosition = position.clone();
+      wordPosition.x += (col - (wordsPerRow-1)/2) * wordWidthApprox; // Center horizontally
+      wordPosition.y += 0.5 - (row * rowHeight); // Stack vertically below repo name
+      wordPosition.z -= 0.5; // Slightly in front of the collection point
+      
+      // Add a little bit of randomness to prevent perfect grid
+      wordPosition.x += (Math.random() - 0.5) * 0.2;
+      wordPosition.y += (Math.random() - 0.5) * 0.1;
+      
+      // Create particle for this word with isRepoName = false
+      const wordColor = neonColors[Math.floor(Math.random() * neonColors.length)];
+      const wordParticle = new TextParticle(word, wordPosition, wordColor, false);
       
       scene.add(wordParticle.mesh);
       explodingTexts.push(wordParticle);
-    }, i * 100); // Stagger the appearance of words
+    }, 500 + i * 150); // Longer initial delay, plus slightly longer stagger for reading
+  }
+  
+  // Add language and stars information if available
+  if (repo.language || repo.stars) {
+    setTimeout(() => {
+      if (gameOver) return;
+      
+      let infoText = '';
+      if (repo.language) infoText += `[${repo.language}]`;
+      if (repo.stars && repo.stars > 0) infoText += ` ★ ${repo.stars}`;
+      
+      if (infoText) {
+        // Position below the repository name
+        const infoPosition = namePosition.clone();
+        infoPosition.y -= 0.6;
+        
+        // Create info text particle with eye-catching color
+        const infoParticle = new TextParticle(infoText, infoPosition, 0xffff00, false);
+        scene.add(infoParticle.mesh);
+        explodingTexts.push(infoParticle);
+      }
+    }, 300); // Show shortly after repo name
   }
 }
 
