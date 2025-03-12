@@ -97,49 +97,19 @@ export class TextParticle {
       // Make sure text is always a string
       let safeText = String(this.text || '');
       
-      // Implement text wrapping for long text
-      // We'll need to check if text is too long and split it into multiple lines
+      // No text wrapping - only use text that fits in a single line
+      // This ensures no text is cut off with "..."
       const textLines = [];
-      const maxLineWidth = this.isRepoName ? 1300 : 1400; // Maximum width in pixels
       
-      // Measure the full text width
-      const fullTextMetrics = context.measureText(safeText);
-      
-      if (fullTextMetrics.width > maxLineWidth) {
-        // Text needs wrapping
-        const words = safeText.split(' ');
-        let currentLine = '';
-        
-        // Process each word
-        words.forEach(word => {
-          // Measure current line with this word added
-          const testLine = currentLine ? currentLine + ' ' + word : word;
-          const testMetrics = context.measureText(testLine);
-          
-          if (testMetrics.width > maxLineWidth) {
-            // If adding this word exceeds max width, push current line and start new line
-            if (currentLine) {
-              textLines.push(currentLine);
-              currentLine = word;
-            } else {
-              // This single word is too long, we'll need to truncate it
-              textLines.push(word);
-              currentLine = '';
-            }
-          } else {
-            // Add word to current line
-            currentLine = testLine;
-          }
-        });
-        
-        // Add the last line if any
-        if (currentLine) {
-          textLines.push(currentLine);
-        }
-      } else {
-        // No wrapping needed
-        textLines.push(safeText);
+      // Deliberately limit text to be very brief to ensure it always fits
+      let displayText = safeText;
+      // If text is too long, just use the first word to avoid any wrapping issues
+      if (displayText.includes(' ')) {
+        displayText = displayText.split(' ')[0];
       }
+      
+      // Always use just a single line of text - never wrap
+      textLines.push(displayText);
       
       // Calculate total height needed for all lines
       const lineHeight = fontSize * 1.2;
