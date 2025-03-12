@@ -2,6 +2,41 @@
 layout: default
 ---
 
+<style>
+  .hidden { display: none !important; }
+  .overlay-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    background-color: rgba(0,0,0,0.7);
+    padding: 2em;
+    border-radius: 10px;
+    z-index: 1000;
+  }
+  .logo {
+    font-size: 3em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+    color: #00ffff;
+    text-shadow: 0 0 10px #00ffff;
+  }
+  .start-button {
+    font-size: 1.5em;
+    margin-top: 1em;
+    color: #ff00ff;
+    text-shadow: 0 0 10px #ff00ff;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+  }
+</style>
+
 <div class="home">
   <h1 class="simple-intro">hi, i'm pj. i like to code</h1>
   
@@ -824,6 +859,117 @@ class TextParticle {
 // Create exploding text effect for repositories and LinkedIn data
 function createExplodingRepoText(position, item) {
   try {
+    // CRITICAL FIX: Add detailed debugging
+    console.log("CREATE EXPLODING REPO TEXT CALLED with item:", item);
+    
+    // Create unique ID for this popup to prevent conflicts
+    const popupId = 'repo-popup-' + Date.now();
+    
+    // EMERGENCY FIX: Implement a 2D DOM-based solution since the 3D text might be failing
+    // Create a DOM element to display data directly on screen
+    const gameContainer = document.getElementById('game-container');
+    
+    // Remove any existing popups to prevent clutter 
+    // (keeping max of 2 popups at once for better readability)
+    const existingPopups = document.querySelectorAll('.repo-popup');
+    if (existingPopups.length >= 2) {
+      const oldestPopup = existingPopups[0];
+      if (oldestPopup && oldestPopup.parentNode) {
+        oldestPopup.parentNode.removeChild(oldestPopup);
+      }
+    }
+    if (gameContainer) {
+      // Create a temporary div for displaying info
+      const infoDiv = document.createElement('div');
+      infoDiv.id = popupId;
+      infoDiv.className = 'repo-popup';
+      infoDiv.style.position = 'absolute';
+      infoDiv.style.top = '30%';
+      infoDiv.style.left = '50%';
+      infoDiv.style.transform = 'translate(-50%, -50%)';
+      infoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      infoDiv.style.color = '#00ffff';
+      infoDiv.style.padding = '20px';
+      infoDiv.style.borderRadius = '10px';
+      infoDiv.style.border = '2px solid #00ffff';
+      infoDiv.style.fontFamily = 'monospace';
+      infoDiv.style.zIndex = '1000';
+      infoDiv.style.textAlign = 'center';
+      infoDiv.style.fontSize = '18px';
+      infoDiv.style.maxWidth = '80%';
+      infoDiv.style.boxShadow = '0 0 10px #00ffff';
+      infoDiv.style.transition = 'opacity 0.5s';
+      
+      // Determine if this is a GitHub or resume item
+      const isResume = item.source === 'resume';
+      infoDiv.style.color = isResume ? '#ff5700' : '#6cc644';
+      infoDiv.style.borderColor = isResume ? '#ff5700' : '#6cc644';
+      infoDiv.style.boxShadow = `0 0 10px ${isResume ? '#ff5700' : '#6cc644'}`;
+      
+      // Add the item name
+      const titleElem = document.createElement('h2');
+      titleElem.textContent = item.name || 'Unknown';
+      titleElem.style.marginBottom = '10px';
+      infoDiv.appendChild(titleElem);
+      
+      // Add description if available
+      if (item.description) {
+        const descElem = document.createElement('div');
+        descElem.textContent = item.description;
+        descElem.style.marginBottom = '10px';
+        infoDiv.appendChild(descElem);
+      }
+      
+      // Add details if available
+      if (item.details) {
+        const detailsElem = document.createElement('div');
+        detailsElem.textContent = item.details;
+        detailsElem.style.fontSize = '14px';
+        detailsElem.style.opacity = '0.8';
+        infoDiv.appendChild(detailsElem);
+      }
+      
+      // For GitHub repos, add language and stars
+      if (item.language || item.stars) {
+        const metaElem = document.createElement('div');
+        metaElem.style.marginTop = '10px';
+        metaElem.style.fontSize = '14px';
+        
+        if (item.language) {
+          metaElem.textContent = `[${item.language}]`;
+        }
+        
+        if (item.stars) {
+          if (item.language) metaElem.textContent += ' ';
+          metaElem.textContent += `★ ${item.stars}`;
+        }
+        
+        infoDiv.appendChild(metaElem);
+      }
+      
+      // Add to the DOM
+      gameContainer.appendChild(infoDiv);
+      
+      // Begin fade out after 3 seconds, then remove
+      setTimeout(() => {
+        if (infoDiv) {
+          infoDiv.style.opacity = '0';
+          // Remove after fade completes
+          setTimeout(() => {
+            if (infoDiv && infoDiv.parentNode) {
+              infoDiv.parentNode.removeChild(infoDiv);
+            }
+          }, 500);
+        }
+      }, 3000);
+      
+      // Position newer popups higher than older ones to prevent overlap
+      const existingCount = document.querySelectorAll('.repo-popup').length;
+      if (existingCount > 0) {
+        infoDiv.style.top = (20 + (existingCount * 10)) + '%';
+      }
+    }
+    
     if (!item || !position) {
       console.error('Invalid item or position for exploding text');
       return;
@@ -931,7 +1077,8 @@ function createExplodingRepoText(position, item) {
     }
     
     // For GitHub repos, add language and stars information if available
-    if (!isLinkedInItem && (item.language || item.stars)) {
+    // There's no LinkedIn items anymore, always check for language/stars
+    if (item.language || item.stars) {
       setTimeout(() => {
         let infoText = '';
         // Only add language if it exists and isn't unusual
@@ -1852,11 +1999,8 @@ function createCollectible() {
       collectible.userData.dataSource = userData.dataSource || 'github';
     }
     
-    // For LinkedIn items, assign a specific LinkedIn data item if available
-    if (userData.dataSource === 'linkedin' && linkedinData && linkedinData.length > 0) {
-      const randomIndex = Math.floor(Math.random() * linkedinData.length);
-      collectible.userData.dataItem = linkedinData[randomIndex];
-    }
+    // This code block was for LinkedIn data, which is not used anymore
+    // We now use GitHub and resume data instead
   } catch (error) {
     console.error('Error setting collectible userData:', error);
   }
@@ -1919,15 +2063,15 @@ function shakeCamera(intensity = 0.5) {
 function checkCollisions() {
   // No obstacle collisions - only collectibles for repo display
   
-  // Track if we're currently showing a repo to prevent overlapping displays
-  if (!window.gameState) {
-    window.gameState = {
-      isShowingRepo: false,
-      lastRepoShownTime: 0
-    };
-  }
+  // CRITICAL FIX: Reset game state each time to ensure we can always show repos
+  // This prevents state from getting stuck
+  window.gameState = {
+    isShowingRepo: false,
+    lastRepoShownTime: 0
+  };
+  
   const currentTime = Date.now();
-  const REPO_DISPLAY_COOLDOWN = 3500; // Increased to 3.5 seconds between repo displays for better readability
+  // No cooldown needed since we reset state every time
 
   // Check collectible collisions
   for (let i = collectibles.length - 1; i >= 0; i--) {
@@ -1943,23 +2087,15 @@ function checkCollisions() {
     // Check for collectible pickup
     const distance = player.position.distanceTo(collectible.position);
     if (distance < playerSize + 0.7) {
-      // Only show repo if enough time has passed since the last one
-      const shouldShowRepo = !window.gameState.isShowingRepo && 
-                             (currentTime - window.gameState.lastRepoShownTime > REPO_DISPLAY_COOLDOWN);
+      // CRITICAL FIX: Always show repos by forcing shouldShowRepo to true
+      // This ensures items always display when collected
+      const shouldShowRepo = true;
       
-      // Create collection effect (potentially without showing repo)
+      // Create collection effect with repo display now forced on
       createCollectionEffect(collectible.position.x, collectible.position.y, collectible.position.z, shouldShowRepo);
       
-      // If we're showing a repo, update our state
-      if (shouldShowRepo) {
-        window.gameState.isShowingRepo = true;
-        window.gameState.lastRepoShownTime = currentTime;
-        
-        // Reset the flag after a delay to allow showing the next repo
-        setTimeout(() => {
-          window.gameState.isShowingRepo = false;
-        }, REPO_DISPLAY_COOLDOWN);
-      }
+      // CRITICAL FIX: No need to update state or set timeout since we reset state on every collision check
+      // This ensures we never get stuck in a state where new items can't be displayed
       
       // Remove collectible
       scene.remove(collectible);
@@ -2087,6 +2223,9 @@ function createCollectionEffect(x, y, z, showRepo = true) {
   pointLight.position.set(x, y, z);
   scene.add(pointLight);
   
+  // CRITICAL FIX: Debug point - add a forced display alert
+  console.log("COLLECTION EFFECT - showRepo value:", showRepo);
+  
   // Display collected item info if available AND if showRepo flag is true
   if (showRepo) {
     // Check if this collectible had specific data assigned to it
@@ -2115,6 +2254,23 @@ function createCollectionEffect(x, y, z, showRepo = true) {
           console.log('Profile data item source:', dataItem.source);
         }
       }
+      
+      // CRITICAL FIX: If we couldn't find the data from the collectible, use fallback data
+      if (!dataItem) {
+        console.log("No data item found for collectible - using fallback data");
+        // Try to get a random item from either resume or GitHub data
+        if (profileData && profileData.length > 0) {
+          const randomIndex = Math.floor(Math.random() * profileData.length);
+          dataItem = profileData[randomIndex];
+          dataSource = 'profile';
+          console.log("Using fallback profile data:", dataItem);
+        } else if (githubRepos && githubRepos.length > 0) {
+          const randomIndex = Math.floor(Math.random() * githubRepos.length);
+          dataItem = githubRepos[randomIndex];
+          dataSource = 'github';
+          console.log("Using fallback GitHub repo data:", dataItem);
+        }
+      }
     } catch (error) {
       console.error('Error accessing collectible userData:', error);
       // Fall back to default GitHub display
@@ -2122,9 +2278,10 @@ function createCollectionEffect(x, y, z, showRepo = true) {
     
     console.log('Ready to display data - source:', dataSource, 'dataItem:', dataItem);
     
-    if (dataSource === 'profile' && dataItem) {
-      console.log('Displaying profile data item, source:', dataItem.source);
-      // Use the specific GitHub profile item that was assigned to this collectible
+    // CRITICAL FIX: Always display something regardless of source
+    // We'll choose either profile data or repo data based on what's available
+    if (dataItem) {
+      console.log('Displaying data item, source:', dataSource);
       createExplodingRepoText(new THREE.Vector3(x, y, z), dataItem);
       
       // Refresh GitHub profile data occasionally
@@ -2137,32 +2294,23 @@ function createCollectionEffect(x, y, z, showRepo = true) {
           console.error('Error refreshing GitHub profile data:', err);
         });
       }
-    } 
-    else if (dataSource === 'github' && githubRepos && githubRepos.length > 0) {
-      // Get the next repository from the front of the array (newest repos first)
-      // This ensures we're always showing the most recently updated repos first
-      const repo = githubRepos[0];
+    }
       
-      // Create the exploding text effect with the repository info
-      createExplodingRepoText(new THREE.Vector3(x, y, z), repo);
+    // Always cycle through repositories to ensure variety
+    if (githubRepos && githubRepos.length > 1) {
+      const usedRepo = githubRepos.shift(); // Remove from front
+      githubRepos.push(usedRepo); // Add to end
+    }
       
-      // Move this repo to the end of the array to cycle through them
-      // This way we show all repos before repeating
-      if (githubRepos.length > 1) {
-        const usedRepo = githubRepos.shift(); // Remove from front
-        githubRepos.push(usedRepo); // Add to end
-      }
-      
-      // Refresh GitHub data occasionally
-      if (Math.random() < 0.1) { // Increased to 10% chance to refresh
-        console.log('Refreshing GitHub repos...');
-        fetchGitHubRepos().then(repos => {
-          githubRepos = repos;
-          console.log('GitHub repos refreshed with', githubRepos.length, 'repositories');
-        }).catch(err => {
-          console.error('Error refreshing GitHub data:', err);
-        });
-      }
+    // Refresh GitHub data occasionally
+    if (Math.random() < 0.1) { // 10% chance to refresh
+      console.log('Refreshing GitHub repos...');
+      fetchGitHubRepos().then(repos => {
+        githubRepos = repos;
+        console.log('GitHub repos refreshed with', githubRepos.length, 'repositories');
+      }).catch(err => {
+        console.error('Error refreshing GitHub data:', err);
+      });
     }
   }
   
@@ -2252,9 +2400,24 @@ function flashGrid() {
 
 // Start the game
 function startGame() {
+  console.log("Starting game!");
+  
+  // Make sure the game hasn't already started
+  if (gameStarted) return;
+  
+  // Set game state
   gameStarted = true;
   gameOver = false; // Keep this for compatibility but don't use it
-  document.getElementById('start-screen').classList.add('hidden');
+  
+  // Hide the start screen
+  const startScreen = document.getElementById('start-screen');
+  if (startScreen) {
+    startScreen.classList.add('hidden');
+    console.log("Start screen hidden:", startScreen.classList.contains('hidden'));
+  } else {
+    console.error("Start screen element not found!");
+  }
+  
   updateScore(0);
   
   // Initialize the last collectible time to ensure timely collectible creation
@@ -2288,8 +2451,8 @@ function startGame() {
     window._gitHubProfileItemChance = originalChance;
     
     // Distribute collectibles evenly along the track with no large gaps
-    // Closer positions for initial set, then gradually increasing distance
-    collectibles[i].position.z = -15 - (i * 4.5); // Position them closer for more frequent encounters
+    // Much closer positions for initial set to increase encounter frequency
+    collectibles[i].position.z = -15 - (i * 3.0); // Position them much closer for more frequent encounters
     
     // Distribute them across all lanes to ensure all areas have collectibles
     collectibles[i].position.x = lanes[i % 3];
@@ -2416,7 +2579,7 @@ function refreshGame() {
     window._gitHubProfileItemChance = originalChance;
     
     // Distribute collectibles evenly along the track with no large gaps
-    collectibles[i].position.z = -15 - (i * 4.5); // Position them closer for more frequent encounters
+    collectibles[i].position.z = -15 - (i * 3.0); // Position them much closer for more frequent encounters
     
     // Distribute them across all lanes to ensure all areas have collectibles
     collectibles[i].position.x = lanes[i % 3];
@@ -2428,7 +2591,7 @@ function refreshGame() {
 
 // Track last collectible creation time
 let lastCollectibleTime = 0;
-const MAX_TIME_BETWEEN_COLLECTIBLES = 1000; // Maximum 1 second between collectibles to increase spawn rate
+const MAX_TIME_BETWEEN_COLLECTIBLES = 400; // Maximum 0.4 seconds between collectibles to significantly increase spawn rate
 
 // Animation loop
 function animate() {
@@ -2602,8 +2765,8 @@ function animate() {
         const timeSinceLastCollectible = currentTime - lastCollectibleTime;
         
         // Either create by random chance or force creation if it's been too long
-        // Increased chance from 6% to 15% for more frequent collectibles
-        if (Math.random() < 0.15 || timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES) {
+        // Significantly increased chance from 15% to 30% for much more frequent collectibles
+        if (Math.random() < 0.30 || timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES) {
           createCollectible();
           lastCollectibleTime = currentTime;
         }
@@ -2668,8 +2831,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// Simplified global handler for spacebar - capture at window level
+// CRITICAL FIX: Enhanced keyboard event handling to ensure space bar works
 window.addEventListener('keydown', function(event) {
+  console.log("Key pressed:", event.key, event.code);
+  
   // Handle the space key for controlling the game
   if (event.key === ' ' || event.code === 'Space') {
     // Prevent page scrolling
@@ -2677,8 +2842,32 @@ window.addEventListener('keydown', function(event) {
     
     // Handle game state
     if (!gameStarted) {
+      console.log("Game not started, calling startGame()");
       startGame();
+    } else {
+      console.log("Game already started");
+    }
+  }
+  
+  // Also handle keyboard controls directly here as a fallback
+  if (gameStarted) {
+    if (event.key === 'ArrowLeft' || event.code === 'ArrowLeft') {
+      // Move left
+      event.preventDefault();
+      if (currentLane > 0) currentLane--;
+    } else if (event.key === 'ArrowRight' || event.code === 'ArrowRight') {
+      // Move right
+      event.preventDefault();
+      if (currentLane < 2) currentLane++;
     }
   }
 }, false);
+
+// Add touchscreen support for mobile
+document.addEventListener('touchstart', function(event) {
+  if (!gameStarted) {
+    startGame();
+    event.preventDefault();
+  }
+});
 </script>
