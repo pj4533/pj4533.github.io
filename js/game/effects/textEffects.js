@@ -65,6 +65,16 @@ export function createExplodingRepoText(position, item, scene, explodingTexts) {
         default: emoji = '';
       }
       combinedText = emoji ? `${emoji} ${item.name}` : item.name;
+      
+      // Add description if available
+      if (item.description) {
+        combinedText += `\n${item.description}`;
+      }
+      
+      // Add details if available (especially for resume items)
+      if (item.details) {
+        combinedText += `\n${item.details}`;
+      }
     } else {
       // For GitHub repos, format name and add available info
       combinedText = item.name.toUpperCase();
@@ -78,7 +88,19 @@ export function createExplodingRepoText(position, item, scene, explodingTexts) {
       if (item.stars && item.stars > 0) {
         combinedText += ` ★${item.stars}`;
       }
+      
+      // Add description if available
+      if (item.description) {
+        combinedText += `\n${item.description}`;
+      }
     }
+    
+    // Ensure we have a complete, meaningful text
+    if (combinedText.trim().length === 0) {
+      combinedText = item.name || "Unknown Item";
+    }
+    
+    console.log("Creating text particle with text:", combinedText);
     
     // Create a single text particle with all the information
     const textParticle = new TextParticle(combinedText, textPosition, displayColor, true);

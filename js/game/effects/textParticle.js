@@ -101,44 +101,50 @@ export class TextParticle {
       const textLines = [];
       const maxLineWidth = this.isRepoName ? 1500 : 1600; // Maximum width in pixels
       
-      // Measure the full text width
-      const fullTextMetrics = context.measureText(safeText);
+      // First, split by explicit newlines to respect formatting
+      const explicitLines = safeText.split('\n');
       
-      if (fullTextMetrics.width > maxLineWidth) {
-        // Text needs wrapping
-        const words = safeText.split(' ');
-        let currentLine = '';
+      // Process each explicit line for width wrapping
+      explicitLines.forEach(line => {
+        // Measure the line width
+        const lineMetrics = context.measureText(line);
         
-        // Process each word - no word limit
-        words.forEach(word => {
-          // Measure current line with this word added
-          const testLine = currentLine ? currentLine + ' ' + word : word;
-          const testMetrics = context.measureText(testLine);
+        if (lineMetrics.width > maxLineWidth) {
+          // Line needs wrapping
+          const words = line.split(' ');
+          let currentLine = '';
           
-          if (testMetrics.width > maxLineWidth) {
-            // If adding this word exceeds max width, push current line
-            if (currentLine) {
-              textLines.push(currentLine);
-              currentLine = word;
+          // Process each word - no word limit
+          words.forEach(word => {
+            // Measure current line with this word added
+            const testLine = currentLine ? currentLine + ' ' + word : word;
+            const testMetrics = context.measureText(testLine);
+            
+            if (testMetrics.width > maxLineWidth) {
+              // If adding this word exceeds max width, push current line
+              if (currentLine) {
+                textLines.push(currentLine);
+                currentLine = word;
+              } else {
+                // Handle very long single words - use them as is
+                textLines.push(word);
+                currentLine = '';
+              }
             } else {
-              // Handle very long single words - use them as is
-              textLines.push(word);
-              currentLine = '';
+              // Add word to current line
+              currentLine = testLine;
             }
-          } else {
-            // Add word to current line
-            currentLine = testLine;
+          });
+          
+          // Add the last line if any
+          if (currentLine) {
+            textLines.push(currentLine);
           }
-        });
-        
-        // Add the last line if any
-        if (currentLine) {
-          textLines.push(currentLine);
+        } else {
+          // No wrapping needed for this line
+          textLines.push(line);
         }
-      } else {
-        // No wrapping needed
-        textLines.push(safeText);
-      }
+      });
       
       // Ensure we have at least one line
       if (textLines.length === 0) {
@@ -222,16 +228,11 @@ export class TextParticle {
       // Calculate appropriate plane dimensions based on text lines
       const planeWidth = 4.0; // Wider plane to fit more text
       
-      // Calculate appropriate height based on number of text lines
-      // Default is 1.5, but increase it if we have multiple lines
-      const lineBreaks = safeText.split('\n');
-      const lineCount = Math.max(lineBreaks.length, 1);
+      // Use actual textLines length for most accurate height calculation
+      const lineCount = textLines.length;
       
-      // Apply extra height for wrapped text (detected earlier)
-      const needsExtraHeight = fullTextMetrics && fullTextMetrics.width > maxLineWidth;
-      const planeHeight = needsExtraHeight ? 
-                         (1.5 + (0.5 * Math.floor(fullTextMetrics.width / maxLineWidth))) : 
-                         (lineCount > 1 ? 1.5 + (lineCount * 0.5) : 1.5);
+      // Base height on actual number of text lines
+      const planeHeight = lineCount <= 1 ? 1.5 : 1.5 + ((lineCount - 1) * 0.5);
       
       // Create plane geometry for the text
       const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);

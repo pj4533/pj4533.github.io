@@ -526,8 +526,20 @@ export function createCollectionEffect(x, y, z, showRepo, scene, explodingTexts,
     // Only display data items that have visual effects - no empty or placeholder items
     if (dataItem && 
         // Only show items that have meaningful content (name and one of: description, language, stars)
-        dataItem.name && 
-        (dataItem.description || dataItem.language || dataItem.stars || dataItem.details)) {
+        dataItem.name) {
+      
+      // Ensure item has all necessary properties to avoid undefined values
+      if (!dataItem.description) dataItem.description = "";
+      if (!dataItem.details) dataItem.details = "";
+      
+      // Log what we're displaying to help debug
+      console.log("Displaying collectible data:", {
+        name: dataItem.name,
+        type: dataItem.type || "unknown",
+        source: dataItem.source || "unknown",
+        description: dataItem.description || "none",
+        details: dataItem.details || "none"
+      });
       
       // Force the popup to display by calling function directly - but only with 3D text effects
       createExplodingRepoText(new THREE.Vector3(x, y, z), dataItem, scene, explodingTexts);
