@@ -179,9 +179,17 @@ export function createCollectible(currentLane, profileData, githubRepos, gitHubP
     return collectible;
   }
   
-  // For standard collectibles, store that this is a GitHub item
+  // For GitHub repo collectibles, store that this is a GitHub item
   collectibleUserData.dataSource = 'github';
-  // We don't set userData.dataItem for GitHub items yet - that will be selected at display time
+  
+  // Immediately assign a GitHub repo to this collectible
+  if (githubRepos && githubRepos.length > 0) {
+    const randomIndex = Math.floor(Math.random() * githubRepos.length);
+    collectibleUserData.dataItem = githubRepos[randomIndex];
+    console.log("Assigned GitHub repo:", collectibleUserData.dataItem.name);
+  } else {
+    console.log("No GitHub repos available to assign!");
+  }
   
   switch (collectibleType) {
     case 0: // Cassette tape

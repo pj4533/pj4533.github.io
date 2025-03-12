@@ -75,17 +75,32 @@ async function initGame() {
     // Flash the grid immediately when the page loads for emphasis
     setTimeout(() => sceneManager.flashGrid(), 500);
     
-    // Load GitHub data
+    // Load GitHub data - log detailed information to help debug
     window._gitHubProfileItemChance = GITHUB_PROFILE_ITEM_CHANCE;
     
-    fetchGitHubRepos().then(repos => {
+    // Use Promise.all to load both data types in parallel
+    Promise.all([
+        fetchGitHubRepos(),
+        fetchGitHubProfileData()
+    ]).then(([repos, profile]) => {
+        // Store the GitHub repos data
         githubRepos = repos;
         console.log('Loaded GitHub repos:', githubRepos.length);
-    });
-    
-    fetchGitHubProfileData().then(profile => {
+        
+        // Log each repo for debugging
+        if (githubRepos.length > 0) {
+            console.log('First few repos:', githubRepos.slice(0, 3).map(repo => 
+                `${repo.name} (${repo.language || 'No language'}) - ${repo.description || 'No description'}`
+            ));
+        } else {
+            console.error('No GitHub repos were loaded!');
+        }
+        
+        // Store the profile data
         profileData = processGitHubProfileData(profile);
         console.log('Loaded GitHub profile data items:', profileData.length);
+    }).catch(error => {
+        console.error('Error loading GitHub data:', error);
     });
 }
 
@@ -298,25 +313,34 @@ function animate() {
                     return c.position.z < 0;
                 });
                 
-                // Strict limit: only create a new collectible if:
-                // 1. There are fewer than 3 collectibles ahead of the player
-                // 2. Significant time has passed since last collectible creation
-                // 3. Lower random chance (only 10%) to limit creation rate
+                // More permissive rules for creating collectibles:
+                // 1. Allow up to 3 collectibles ahead of the player
+                // 2. Shorter time between collectible creation
+                // 3. Higher random chance (30%) to create more collectibles
                 const timeSinceLastCollectible = currentTime - lastCollectibleTime;
                 
-                if (visibleCollectibles.length < 2 && 
-                    timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES * 2 && 
-                    (Math.random() < 0.1 || visibleCollectibles.length === 0)) {
+                if (visibleCollectibles.length < 3 && 
+                    timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES && 
+                    (Math.random() < 0.3 || visibleCollectibles.length === 0)) {
                     
                     console.log("Creating new collectible. Current count:", visibleCollectibles.length);
                     
-                    // Create a single collectible
-                    const collectible = createCollectible(currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
+                    // Alternate between GitHub repos and profile data to ensure both appear
+                    // Force GitHub repo collectibles to appear regularly
+                    const useGitHubRepo = (collectibles.length % 3 === 0);
+                    
+                    // Adjust chance based on what we want to display
+                    const chanceToUse = useGitHubRepo ? 0.0 : window._gitHubProfileItemChance;
+                    
+                    // Create collectible with controlled type distribution
+                    const collectible = createCollectible(currentLane, profileData, githubRepos, chanceToUse);
                     addCollectible(collectible, sceneManager.scene);
                     
-                    // Position the collectible further away to give player time to see it
-                    // Always use a fixed distance to maintain consistent gameplay
-                    collectible.position.z = -40;
+                    // Debug what type of collectible we're creating
+                    console.log("Collectible type:", useGitHubRepo ? "GitHub Repo" : "Profile Data");
+                    
+                    // Position closer to make them appear more frequently
+                    collectible.position.z = -30 - (Math.random() * 10);
                     
                     // Randomly select one of the three lanes
                     collectible.position.x = LANES[Math.floor(Math.random() * LANES.length)];
