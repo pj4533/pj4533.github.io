@@ -321,38 +321,70 @@ export function createCollectible(currentLane, profileData, githubRepos, gitHubP
       collectible = controllerGroup;
       break;
       
-    case 2: // Vinyl record
-      const recordGroup = new THREE.Group();
+    case 2: // Crystal/Hex prism (replacing vinyl record)
+      const crystalGroup = new THREE.Group();
       
-      // Main record disk
-      const recordGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.02, 32);
-      const recordMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
-      const record = new THREE.Mesh(recordGeometry, recordMaterial);
-      record.rotation.x = Math.PI / 2;
-      recordGroup.add(record);
+      // Create a hexagonal prism base
+      // Use a cylinder with 6 segments to create a hexagonal shape
+      const crystalBaseGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.35, 6, 1);
+      const crystalBaseMaterial = new THREE.MeshBasicMaterial({
+        color: itemColor,
+        transparent: true,
+        opacity: 0.7,
+        wireframe: false
+      });
+      const crystalBase = new THREE.Mesh(crystalBaseGeometry, crystalBaseMaterial);
+      crystalBase.rotation.x = Math.PI / 6; // Tilt slightly for better visibility
+      crystalGroup.add(crystalBase);
       
-      // Add record label in the center
-      const labelRadius = 0.1;
-      const recordLabelGeometry = new THREE.CylinderGeometry(labelRadius, labelRadius, 0.025, 32);
-      const recordLabelMaterial = new THREE.MeshBasicMaterial({ color: itemColor });
-      const recordLabel = new THREE.Mesh(recordLabelGeometry, recordLabelMaterial);
-      recordLabel.rotation.x = Math.PI / 2;
-      recordLabel.position.z = 0.003;
-      recordGroup.add(recordLabel);
+      // Create crystal edges (wireframe)
+      const edgesGeometry = new THREE.EdgesGeometry(crystalBaseGeometry);
+      const edgesMaterial = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.9
+      });
+      const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+      edges.rotation.x = Math.PI / 6; // Same rotation as base
+      crystalGroup.add(edges);
       
-      // Add center hole
-      const holeGeometry2 = new THREE.CylinderGeometry(0.02, 0.02, 0.03, 16);
-      const holeMaterial2 = new THREE.MeshBasicMaterial({ color: 0x000000 });
-      const hole = new THREE.Mesh(holeGeometry2, holeMaterial2);
-      hole.rotation.x = Math.PI / 2;
-      recordGroup.add(hole);
+      // Add a pyramidal top
+      const topGeometry = new THREE.ConeGeometry(0.25, 0.25, 6);
+      const topMaterial = new THREE.MeshBasicMaterial({
+        color: itemColor,
+        transparent: true,
+        opacity: 0.7
+      });
+      const crystalTop = new THREE.Mesh(topGeometry, topMaterial);
+      crystalTop.rotation.x = Math.PI / 6; // Same rotation as base
+      crystalTop.position.y = 0.3; // Position on top of base
+      crystalGroup.add(crystalTop);
       
-      // Add neon reflection/glow
-      const recordLight = new THREE.PointLight(itemColor, 1.5, 3);
-      recordLight.position.set(0, 0, 0);
-      recordGroup.add(recordLight);
+      // Add top edges
+      const topEdgesGeometry = new THREE.EdgesGeometry(topGeometry);
+      const topEdges = new THREE.LineSegments(topEdgesGeometry, edgesMaterial);
+      topEdges.rotation.x = Math.PI / 6; // Same rotation as top
+      topEdges.position.y = 0.3; // Same position as top
+      crystalGroup.add(topEdges);
       
-      collectible = recordGroup;
+      // Add neon glow light
+      const crystalLight = new THREE.PointLight(itemColor, 1.5, 3);
+      crystalLight.position.set(0, 0, 0);
+      crystalGroup.add(crystalLight);
+      
+      // Add special animation function for this collectible
+      crystalGroup.userData = {
+        ...collectibleUserData, // Preserve the GitHub data
+        animate: function(time) {
+          // Rotate the crystal continuously for sparkle effect
+          crystalBase.rotation.y += 0.01;
+          edges.rotation.y += 0.01;
+          crystalTop.rotation.y += 0.01;
+          topEdges.rotation.y += 0.01;
+        }
+      };
+      
+      collectible = crystalGroup;
       break;
       
     case 3: // Holographic pyramid
