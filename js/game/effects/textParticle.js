@@ -97,7 +97,7 @@ export class TextParticle {
       // Make sure text is always a string
       let safeText = String(this.text || '');
       
-      // Implement text wrapping for long text but with a limit on how many words
+      // Implement text wrapping for long text without arbitrary limits
       const textLines = [];
       const maxLineWidth = this.isRepoName ? 1500 : 1600; // Maximum width in pixels
       
@@ -109,11 +109,8 @@ export class TextParticle {
         const words = safeText.split(' ');
         let currentLine = '';
         
-        // Process each word - limit to 8 words max
-        const maxWords = 8;
-        const limitedWords = words.slice(0, maxWords);
-        
-        limitedWords.forEach(word => {
+        // Process each word - no word limit
+        words.forEach(word => {
           // Measure current line with this word added
           const testLine = currentLine ? currentLine + ' ' + word : word;
           const testMetrics = context.measureText(testLine);
@@ -122,13 +119,7 @@ export class TextParticle {
             // If adding this word exceeds max width, push current line
             if (currentLine) {
               textLines.push(currentLine);
-              
-              // Only add this word as a new line if we have fewer than 2 lines
-              if (textLines.length < 1) {
-                currentLine = word;
-              } else {
-                currentLine = '';
-              }
+              currentLine = word;
             } else {
               // Handle very long single words - use them as is
               textLines.push(word);
@@ -140,8 +131,8 @@ export class TextParticle {
           }
         });
         
-        // Add the last line if any and we have fewer than 2 lines
-        if (currentLine && textLines.length < 2) {
+        // Add the last line if any
+        if (currentLine) {
           textLines.push(currentLine);
         }
       } else {
