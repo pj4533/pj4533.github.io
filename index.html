@@ -35,7 +35,7 @@ let obstacles = [];
 let collectibles = [];
 
 // Store the GitHub profile chance in a global variable so we can modify it temporarily
-window._gitHubProfileItemChance = 0.6; // Default GitHub profile item chance (60%)
+window._gitHubProfileItemChance = 1.0; // Set to 100% - always create profile/resume items instead of repo items
 let level = 1;
 let playerSize = 0.6;
 let lanes = [-2, 0, 2];
@@ -171,6 +171,14 @@ async function fetchGitHubProfileData() {
       resumeData
     };
     
+    console.log('Combined data with resume included:', combinedData);
+    console.log('Resume data has expected properties:', 
+      combinedData.resumeData && 
+      combinedData.resumeData.experience && 
+      combinedData.resumeData.skills && 
+      combinedData.resumeData.education
+    );
+    
     return combinedData;
   } catch (error) {
     console.error('Error fetching GitHub profile:', error);
@@ -189,6 +197,9 @@ async function fetchGitHubProfileData() {
 
 // Transform GitHub profile data and resume data into collectible items for the game
 function processGitHubProfileData(data) {
+  console.log('Processing GitHub profile data:', data);
+  console.log('Resume data present:', data.resumeData ? 'Yes' : 'No');
+  
   const items = [];
   const resumeColor = 0xff5700; // Orange color for resume data
   
@@ -1515,9 +1526,27 @@ function createCollectible() {
   if (isProfileItem) {
     // Choose a random profile data item if available
     if (profileData && profileData.length > 0) {
-      const randomIndex = Math.floor(Math.random() * profileData.length);
+      // Important: Filter profile items to include GitHub and resume items separately
+      const resumeItems = profileData.filter(item => item.source === 'resume');
+      const githubItems = profileData.filter(item => item.source !== 'resume');
+      
+      console.log('Available profile items - Resume:', resumeItems.length, 'GitHub:', githubItems.length);
+      
+      // Randomly choose between resume (50% chance) or GitHub (50% chance) when both are available
+      let selectedItems = resumeItems.length > 0 && (Math.random() < 0.5 || githubItems.length === 0) ? 
+                        resumeItems : githubItems;
+                        
+      // Make sure we have something to select from
+      if (selectedItems.length === 0) {
+        selectedItems = profileData; // Fall back to all items if the filtered array is empty
+      }
+      
+      // Choose a random item from the selected items
+      const randomIndex = Math.floor(Math.random() * selectedItems.length);
       userData.dataSource = 'profile';
-      userData.dataItem = profileData[randomIndex];
+      userData.dataItem = selectedItems[randomIndex];
+      
+      console.log('Selected item type:', userData.dataItem.type, 'source:', userData.dataItem.source || 'github');
     } else {
       // If no profile data is available yet, just mark as profile source
       userData.dataSource = 'profile';
@@ -1531,7 +1560,15 @@ function createCollectible() {
     
     // Get the item to determine color
     const dataItem = userData.dataItem;
+    // Debug the item to see if it has the correct source
+    console.log('Profile data item:', dataItem);
+    
+    // Ensure we're detecting resume items consistently
+    // Item should have a source property of 'resume'
     const isResumeItem = dataItem && dataItem.source === 'resume';
+    console.log('Is resume item?', isResumeItem);
+    
+    // IMPORTANT: Use orange color for resume items, GitHub green for GitHub items
     const itemColor = isResumeItem ? 0xff5700 : 0x6cc644; // Orange for resume, green for GitHub
     const innerColor = isResumeItem ? 0xcc4400 : 0x2ea44f; // Darker variant
     
@@ -2066,12 +2103,16 @@ function createCollectionEffect(x, y, z, showRepo = true) {
         Math.abs(c.position.z - z) < 0.5
       );
       
+      console.log('Found collected item:', collectedItem);
+      
       if (collectedItem && collectedItem.userData) {
+        console.log('Collectible userData:', collectedItem.userData);
         if (collectedItem.userData.dataSource) {
           dataSource = collectedItem.userData.dataSource;
         }
         if (collectedItem.userData.dataItem) {
           dataItem = collectedItem.userData.dataItem;
+          console.log('Profile data item source:', dataItem.source);
         }
       }
     } catch (error) {
@@ -2079,7 +2120,10 @@ function createCollectionEffect(x, y, z, showRepo = true) {
       // Fall back to default GitHub display
     }
     
+    console.log('Ready to display data - source:', dataSource, 'dataItem:', dataItem);
+    
     if (dataSource === 'profile' && dataItem) {
+      console.log('Displaying profile data item, source:', dataItem.source);
       // Use the specific GitHub profile item that was assigned to this collectible
       createExplodingRepoText(new THREE.Vector3(x, y, z), dataItem);
       
@@ -2384,7 +2428,7 @@ function refreshGame() {
 
 // Track last collectible creation time
 let lastCollectibleTime = 0;
-const MAX_TIME_BETWEEN_COLLECTIBLES = 2000; // Maximum 2 seconds between collectibles
+const MAX_TIME_BETWEEN_COLLECTIBLES = 1000; // Maximum 1 second between collectibles to increase spawn rate
 
 // Animation loop
 function animate() {
@@ -2558,7 +2602,8 @@ function animate() {
         const timeSinceLastCollectible = currentTime - lastCollectibleTime;
         
         // Either create by random chance or force creation if it's been too long
-        if (Math.random() < 0.06 || timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES) {
+        // Increased chance from 6% to 15% for more frequent collectibles
+        if (Math.random() < 0.15 || timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES) {
           createCollectible();
           lastCollectibleTime = currentTime;
         }
