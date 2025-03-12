@@ -2,8 +2,27 @@
 layout: default
 ---
 
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+
 <style>
   .hidden { display: none !important; }
+  
+  #game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    display: block;
+  }
+  
+  #game-canvas canvas {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
   .overlay-screen {
     position: absolute;
     top: 50%;
@@ -65,7 +84,7 @@ let gameStarted = false;
 let gameOver = false;
 let score = 0;
 let highScore = 0;
-let speed = 0.25; // Slightly increased speed for more frequent collectible encounters
+let speed = 0.1; // Significantly reduced speed to make collectibles more visible
 let obstacles = [];
 let collectibles = [];
 
@@ -892,13 +911,29 @@ function createExplodingRepoText(position, item) {
       infoDiv.style.padding = '20px';
       infoDiv.style.borderRadius = '10px';
       infoDiv.style.border = '2px solid #00ffff';
-      infoDiv.style.fontFamily = 'monospace';
+      infoDiv.style.fontFamily = '"JetBrains Mono", monospace';
       infoDiv.style.zIndex = '1000';
       infoDiv.style.textAlign = 'center';
       infoDiv.style.fontSize = '18px';
       infoDiv.style.maxWidth = '80%';
       infoDiv.style.boxShadow = '0 0 10px #00ffff';
-      infoDiv.style.transition = 'opacity 0.5s';
+      infoDiv.style.transition = 'all 0.3s ease-out';
+      infoDiv.style.textShadow = '0 0 5px currentColor';
+      infoDiv.style.opacity = '0';
+      infoDiv.style.transform = 'translate(-50%, -60%)';
+      
+      // Add custom animation class 
+      const styleSheet = document.createElement('style');
+      styleSheet.textContent = `
+        @keyframes glow {
+          0% { box-shadow: 0 0 5px currentColor; }
+          50% { box-shadow: 0 0 15px currentColor; }
+          100% { box-shadow: 0 0 5px currentColor; }
+        }
+      `;
+      document.head.appendChild(styleSheet);
+      
+      infoDiv.style.animation = 'glow 1.5s infinite';
       
       // Determine if this is a GitHub or resume item
       const isResume = item.source === 'resume';
@@ -910,6 +945,9 @@ function createExplodingRepoText(position, item) {
       const titleElem = document.createElement('h2');
       titleElem.textContent = item.name || 'Unknown';
       titleElem.style.marginBottom = '10px';
+      titleElem.style.textShadow = '0 0 8px currentColor';
+      titleElem.style.fontSize = '24px';
+      titleElem.style.fontWeight = '900';
       infoDiv.appendChild(titleElem);
       
       // Add description if available
@@ -917,6 +955,8 @@ function createExplodingRepoText(position, item) {
         const descElem = document.createElement('div');
         descElem.textContent = item.description;
         descElem.style.marginBottom = '10px';
+        descElem.style.textShadow = '0 0 5px currentColor';
+        descElem.style.fontSize = '18px';
         infoDiv.appendChild(descElem);
       }
       
@@ -924,8 +964,10 @@ function createExplodingRepoText(position, item) {
       if (item.details) {
         const detailsElem = document.createElement('div');
         detailsElem.textContent = item.details;
-        detailsElem.style.fontSize = '14px';
-        detailsElem.style.opacity = '0.8';
+        detailsElem.style.fontSize = '16px';
+        detailsElem.style.opacity = '0.9';
+        detailsElem.style.textShadow = '0 0 4px currentColor';
+        detailsElem.style.marginTop = '5px';
         infoDiv.appendChild(detailsElem);
       }
       
@@ -933,7 +975,9 @@ function createExplodingRepoText(position, item) {
       if (item.language || item.stars) {
         const metaElem = document.createElement('div');
         metaElem.style.marginTop = '10px';
-        metaElem.style.fontSize = '14px';
+        metaElem.style.fontSize = '16px';
+        metaElem.style.color = '#ffff00';
+        metaElem.style.textShadow = '0 0 6px #ffff00'; 
         
         if (item.language) {
           metaElem.textContent = `[${item.language}]`;
@@ -950,10 +994,17 @@ function createExplodingRepoText(position, item) {
       // Add to the DOM
       gameContainer.appendChild(infoDiv);
       
+      // Trigger animation by setting a timeout to allow the DOM to update
+      setTimeout(() => {
+        infoDiv.style.opacity = '1';
+        infoDiv.style.transform = 'translate(-50%, -50%)';
+      }, 10);
+      
       // Begin fade out after 3 seconds, then remove
       setTimeout(() => {
         if (infoDiv) {
           infoDiv.style.opacity = '0';
+          infoDiv.style.transform = 'translate(-50%, -40%)';
           // Remove after fade completes
           setTimeout(() => {
             if (infoDiv && infoDiv.parentNode) {
@@ -1151,9 +1202,38 @@ function init() {
   camera.lookAt(0, 0, -10);
   
   // Create renderer with post-processing effects
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.getElementById('game-canvas').appendChild(renderer.domElement);
+  try {
+    // First clear the game-canvas element to ensure clean state
+    const gameCanvas = document.getElementById('game-canvas');
+    if (gameCanvas) {
+      // Clear any previous content
+      gameCanvas.innerHTML = '';
+      
+      // Create the renderer with explicit pixel ratio
+      renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance'
+      });
+      
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      
+      // Add the canvas element to the DOM
+      gameCanvas.appendChild(renderer.domElement);
+      
+      // Force display style to ensure visibility
+      renderer.domElement.style.display = 'block';
+      renderer.domElement.style.width = '100%';
+      renderer.domElement.style.height = '100%';
+      
+      console.log('WebGL renderer created and attached successfully');
+    } else {
+      console.error('Game canvas element not found!');
+    }
+  } catch (e) {
+    console.error('Error creating WebGL renderer:', e);
+  }
   
   // Add lights
   const ambientLight = new THREE.AmbientLight(0x222222);
@@ -1984,8 +2064,11 @@ function createCollectible() {
   collectible.position.x = lanes[lane];
   collectible.position.y = 0.5 + Math.sin(Date.now() * 0.003) * 0.2; // Floating effect
   
-  // Position collectibles a bit closer to the player for more frequent encounters
-  collectible.position.z = -90 - Math.random() * 15;
+  // Scale up collectibles to make them much more visible
+  collectible.scale.set(2.0, 2.0, 2.0); // Double the size for maximum visibility
+  
+  // Position collectibles much closer to the player for frequent encounters
+  collectible.position.z = -50 - Math.random() * 5; // Much closer to camera (-50 vs -90)
   
   // Store user data in all collectible types
   try {
@@ -2431,9 +2514,9 @@ function startGame() {
   }, 100);
   
   // Only create collectibles - no obstacles
-  // Create more initial collectibles with a deliberate mix of profile/repo items
+  // Create many more initial collectibles with a deliberate mix of profile/repo items
   // Guarantee exposure to GitHub profile data
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 50; i++) { // Dramatically increased from 20 to 50 for maximum visibility
     // Force more GitHub profile items at the beginning to ensure exposure to profile data
     // For the first 14 collectibles, prefer profile items (70% chance)
     // This ensures players will see GitHub profile data early and often
@@ -2450,9 +2533,9 @@ function startGame() {
     // Restore original chance
     window._gitHubProfileItemChance = originalChance;
     
-    // Distribute collectibles evenly along the track with no large gaps
-    // Much closer positions for initial set to increase encounter frequency
-    collectibles[i].position.z = -15 - (i * 3.0); // Position them much closer for more frequent encounters
+    // Distribute collectibles extremely close together to create a dense field
+    // Super close positions for maximum visibility and frequency
+    collectibles[i].position.z = -15 - (i * 1.0); // Position them extremely close for maximum visibility
     
     // Distribute them across all lanes to ensure all areas have collectibles
     collectibles[i].position.x = lanes[i % 3];
@@ -2501,7 +2584,7 @@ function startGame() {
 // Refresh the game - can be triggered manually if needed
 function refreshGame() {
   // Reset basic game parameters but don't stop gameplay
-  speed = 0.2;
+  speed = 0.1; // Keep speed very slow for maximum visibility
   level = 1;
   
   // Clear obstacles and collectibles
@@ -2578,8 +2661,8 @@ function refreshGame() {
     // Restore original chance
     window._gitHubProfileItemChance = originalChance;
     
-    // Distribute collectibles evenly along the track with no large gaps
-    collectibles[i].position.z = -15 - (i * 3.0); // Position them much closer for more frequent encounters
+    // Distribute collectibles extremely close together to create a dense field
+    collectibles[i].position.z = -15 - (i * 1.0); // Position them extremely close for maximum visibility
     
     // Distribute them across all lanes to ensure all areas have collectibles
     collectibles[i].position.x = lanes[i % 3];
@@ -2591,7 +2674,7 @@ function refreshGame() {
 
 // Track last collectible creation time
 let lastCollectibleTime = 0;
-const MAX_TIME_BETWEEN_COLLECTIBLES = 400; // Maximum 0.4 seconds between collectibles to significantly increase spawn rate
+const MAX_TIME_BETWEEN_COLLECTIBLES = 100; // Maximum 0.1 seconds between collectibles for extremely high frequency
 
 // Animation loop
 function animate() {
@@ -2765,8 +2848,8 @@ function animate() {
         const timeSinceLastCollectible = currentTime - lastCollectibleTime;
         
         // Either create by random chance or force creation if it's been too long
-        // Significantly increased chance from 15% to 30% for much more frequent collectibles
-        if (Math.random() < 0.30 || timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES) {
+        // Dramatically increased chance to 80% for extremely high frequency of collectibles
+        if (Math.random() < 0.80 || timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES) {
           createCollectible();
           lastCollectibleTime = currentTime;
         }
@@ -2782,7 +2865,41 @@ function animate() {
     
     // Render scene
     if (renderer && scene && camera) {
-      renderer.render(scene, camera);
+      try {
+        // Force visibility of the renderer DOM element
+        if (renderer.domElement) {
+          renderer.domElement.style.display = 'block';
+          renderer.domElement.style.width = '100%';
+          renderer.domElement.style.height = '100%';
+        }
+        
+        // Make sure the camera aspect ratio is correct
+        if (camera.aspect !== window.innerWidth / window.innerHeight) {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Render the scene
+        renderer.render(scene, camera);
+        
+        // Mark that we've had at least one successful render
+        window._renderSuccessful = true;
+        
+        // Debug renderer status
+        if (window._debugRendering) {
+          console.log('Rendering frame, camera position:', camera.position);
+          window._debugRendering = false;
+        }
+      } catch (e) {
+        console.error('Error during rendering:', e);
+      }
+    } else {
+      console.error('Cannot render: missing renderer, scene or camera', {
+        renderer: !!renderer, 
+        scene: !!scene, 
+        camera: !!camera
+      });
     }
   } catch (err) {
     console.error('Critical error in animation loop:', err);
@@ -2792,8 +2909,231 @@ function animate() {
 }
 
 // Initialize the game when the page loads with safety checks
+// Debug flag to track renderer status
+window._debugRendering = true;
+window._renderSuccessful = false;
+
+// Add a fallback DOM display function for data as a safety measure
+function createFallbackDisplay() {
+  console.log("Creating fallback DOM display for data...");
+  const container = document.getElementById('game-container');
+  if (!container) return;
+  
+  // Create a visible DOM element to show some data in case WebGL fails
+  const fallbackDiv = document.createElement('div');
+  fallbackDiv.id = 'fallback-data-display';
+  fallbackDiv.style.position = 'absolute';
+  fallbackDiv.style.top = '50%';
+  fallbackDiv.style.left = '50%';
+  fallbackDiv.style.transform = 'translate(-50%, -50%)';
+  fallbackDiv.style.width = '80%';
+  fallbackDiv.style.maxHeight = '80%';
+  fallbackDiv.style.overflow = 'auto';
+  fallbackDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+  fallbackDiv.style.color = '#00ffff';
+  fallbackDiv.style.padding = '20px';
+  fallbackDiv.style.borderRadius = '10px';
+  fallbackDiv.style.zIndex = '900';
+  fallbackDiv.style.textAlign = 'center';
+  fallbackDiv.style.border = '2px solid #00ffff';
+  fallbackDiv.style.boxShadow = '0 0 10px #00ffff';
+  fallbackDiv.style.fontFamily = '"JetBrains Mono", monospace';
+  
+  const header = document.createElement('h2');
+  header.textContent = "GitHub Projects & Resume Data";
+  header.style.textShadow = '0 0 5px #00ffff';
+  fallbackDiv.appendChild(header);
+  
+  // Add notice about the game not being visible
+  const notice = document.createElement('p');
+  notice.textContent = "The 3D game is not displaying correctly. Here's the data that would normally be shown in the game:";
+  notice.style.margin = '10px 0 20px 0';
+  fallbackDiv.appendChild(notice);
+  
+  // Add profile data
+  if (profileData && profileData.length > 0) {
+    const itemsContainer = document.createElement('div');
+    itemsContainer.style.display = 'grid';
+    itemsContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
+    itemsContainer.style.gap = '15px';
+    
+    for (let i = 0; i < Math.min(profileData.length, 8); i++) {
+      const item = profileData[i];
+      const itemDiv = document.createElement('div');
+      itemDiv.style.padding = '15px';
+      itemDiv.style.borderRadius = '5px';
+      itemDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+      itemDiv.style.border = `1px solid ${item.source === 'resume' ? '#ff5700' : '#6cc644'}`;
+      
+      const title = document.createElement('h3');
+      title.textContent = item.name || '';
+      title.style.margin = '0 0 10px 0';
+      title.style.color = item.source === 'resume' ? '#ff5700' : '#6cc644';
+      title.style.textShadow = `0 0 5px ${item.source === 'resume' ? '#ff5700' : '#6cc644'}`;
+      itemDiv.appendChild(title);
+      
+      if (item.description) {
+        const desc = document.createElement('p');
+        desc.textContent = item.description;
+        desc.style.margin = '5px 0';
+        itemDiv.appendChild(desc);
+      }
+      
+      if (item.details) {
+        const details = document.createElement('p');
+        details.textContent = item.details;
+        details.style.fontSize = '0.9em';
+        details.style.opacity = '0.8';
+        itemDiv.appendChild(details);
+      }
+      
+      itemsContainer.appendChild(itemDiv);
+    }
+    
+    fallbackDiv.appendChild(itemsContainer);
+  }
+  
+  // Add GitHub repos if available
+  if (githubRepos && githubRepos.length > 0) {
+    const reposHeader = document.createElement('h3');
+    reposHeader.textContent = "GitHub Repositories";
+    reposHeader.style.margin = '20px 0 10px 0';
+    reposHeader.style.color = '#6cc644';
+    reposHeader.style.textShadow = '0 0 5px #6cc644';
+    fallbackDiv.appendChild(reposHeader);
+    
+    const reposContainer = document.createElement('div');
+    reposContainer.style.display = 'grid';
+    reposContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
+    reposContainer.style.gap = '15px';
+    
+    for (let i = 0; i < Math.min(githubRepos.length, 6); i++) {
+      const repo = githubRepos[i];
+      const repoDiv = document.createElement('div');
+      repoDiv.style.padding = '15px';
+      repoDiv.style.borderRadius = '5px';
+      repoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+      repoDiv.style.border = '1px solid #6cc644';
+      
+      const title = document.createElement('h4');
+      title.textContent = repo.name || '';
+      title.style.margin = '0 0 10px 0';
+      title.style.color = '#6cc644';
+      title.style.textShadow = '0 0 5px #6cc644';
+      repoDiv.appendChild(title);
+      
+      if (repo.description) {
+        const desc = document.createElement('p');
+        desc.textContent = repo.description;
+        desc.style.margin = '5px 0';
+        desc.style.fontSize = '0.9em';
+        repoDiv.appendChild(desc);
+      }
+      
+      const meta = document.createElement('p');
+      meta.style.fontSize = '0.8em';
+      meta.style.color = '#ffff00';
+      meta.style.textShadow = '0 0 5px #ffff00';
+      meta.textContent = [
+        repo.language ? `[${repo.language}]` : '',
+        repo.stars ? `★ ${repo.stars}` : ''
+      ].filter(Boolean).join(' ');
+      repoDiv.appendChild(meta);
+      
+      reposContainer.appendChild(repoDiv);
+    }
+    
+    fallbackDiv.appendChild(reposContainer);
+  }
+  
+  // Add a close button
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Close';
+  closeBtn.style.marginTop = '20px';
+  closeBtn.style.padding = '8px 16px';
+  closeBtn.style.backgroundColor = '#ff00ff';
+  closeBtn.style.color = 'white';
+  closeBtn.style.border = 'none';
+  closeBtn.style.borderRadius = '5px';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.textShadow = '0 0 5px #ff00ff';
+  closeBtn.style.boxShadow = '0 0 10px #ff00ff';
+  closeBtn.onclick = function() {
+    fallbackDiv.remove();
+  };
+  fallbackDiv.appendChild(closeBtn);
+  
+  container.appendChild(fallbackDiv);
+}
+
+// Create a global function to force data display in case graphics still fail
+window.forceShowData = function() {
+  createFallbackDisplay();
+};
+
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM content loaded, starting initialization...');
+  
+  // Create a fallback timeout to show data if rendering fails
+  setTimeout(function() {
+    if (!window._renderSuccessful) {
+      console.warn("No successful renders detected - creating fallback data display");
+      createFallbackDisplay();
+    }
+  }, 5000);
+  
+  // Check if WebGL is supported
+  function checkWebGLSupport() {
+    try {
+      const canvas = document.createElement('canvas');
+      return !!(
+        window.WebGLRenderingContext && 
+        (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  // Check if WebGL is supported
+  if (!checkWebGLSupport()) {
+    console.error('WebGL not supported in this browser!');
+    const gameContainer = document.getElementById('game-container');
+    if (gameContainer) {
+      gameContainer.innerHTML = '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; text-align: center; color: #ff00ff; border: 2px solid #ff00ff;"><h2>WebGL Not Supported</h2><p>Your browser does not support WebGL, which is required to run this game.</p><p>Please try using a different browser or update your current one.</p></div>';
+    }
+    return;
+  }
+  
+  // Create a function to verify and fix any display issues
+  function checkGameDisplayStatus() {
+    const gameCanvas = document.getElementById('game-canvas');
+    if (!gameCanvas || gameCanvas.children.length === 0) {
+      console.warn('Game canvas not properly initialized, attempting recovery...');
+      try {
+        if (!renderer) {
+          console.log('Reinitializing game...');
+          init();
+          return;
+        }
+        
+        // Make sure renderer is attached
+        if (renderer.domElement && gameCanvas) {
+          gameCanvas.innerHTML = '';
+          gameCanvas.appendChild(renderer.domElement);
+          renderer.domElement.style.display = 'block';
+          renderer.domElement.style.width = '100%';
+          renderer.domElement.style.height = '100%';
+          console.log('Renderer reattached to DOM');
+        }
+      } catch (e) {
+        console.error('Error during display recovery:', e);
+      }
+    }
+  }
+  
+  // Check display status after a short delay
+  setTimeout(checkGameDisplayStatus, 1000);
   
   // Check for THREE before trying to initialize
   if (typeof THREE === 'undefined') {
@@ -2802,6 +3142,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Try to load Three.js dynamically
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js'; // Use newer version
+    
     script.onload = function() {
       console.log('Three.js loaded successfully!');
       // Initialize game after loading
@@ -2813,10 +3154,24 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Error initializing game. Please check the console for details.');
       }
     };
+    
+    // Handle loading error
     script.onerror = function() {
-      console.error('Failed to load Three.js dynamically');
-      alert('Could not load Three.js library. Please refresh the page or try a different browser.');
+      console.error('Failed to load Three.js!');
+      // Try an alternative CDN
+      const backupScript = document.createElement('script');
+      backupScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r150/three.min.js';
+      backupScript.onload = function() {
+        console.log('Three.js loaded from backup CDN successfully!');
+        try {
+          init();
+        } catch (err) {
+          console.error('Error during game initialization with backup Three.js:', err);
+        }
+      };
+      document.head.appendChild(backupScript);
     };
+    
     document.head.appendChild(script);
   } else {
     // THREE is available, initialize normally
