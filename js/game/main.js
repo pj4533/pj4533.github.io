@@ -13,13 +13,16 @@ import {
 } from './entities/collectible.js';
 import { fetchGitHubRepos } from './data/github.js';
 import { fetchGitHubProfileData, processGitHubProfileData } from './data/profile.js';
+import { initAudio, startMusic, stopMusic, toggleMusic, setMusicVolume } from './core/audio.js';
 
 import { 
     PLAYER_SPEED, 
     LANES, 
     DEFAULT_LANE,
     GITHUB_PROFILE_ITEM_CHANCE,
-    MAX_TIME_BETWEEN_COLLECTIBLES
+    MAX_TIME_BETWEEN_COLLECTIBLES,
+    DEFAULT_MUSIC_ENABLED,
+    DEFAULT_MUSIC_VOLUME
 } from './core/constants.js';
 
 // Game state variables
@@ -31,6 +34,7 @@ let level = 1;
 let currentLane = DEFAULT_LANE;
 let lastCollectibleTime = 0;
 let animationId;
+let musicEnabled = DEFAULT_MUSIC_ENABLED;
 
 // Game objects collections
 let player;
@@ -42,6 +46,9 @@ let explodingTexts = [];
 let githubRepos = [];
 let profileData = [];
 
+// Audio elements
+let musicToggleButton;
+
 // Initialize game components
 async function initGame() {
     console.log('Initializing game...');
@@ -51,6 +58,10 @@ async function initGame() {
     
     // Create player
     player = initializePlayer(sceneManager.scene, currentLane);
+    
+    // Initialize audio system
+    initAudio();
+    setupAudioControls();
     
     // Add event listeners
     document.addEventListener('keydown', handleKeyDown);
@@ -65,8 +76,14 @@ async function initGame() {
             highScore = parseInt(localStorage.getItem('neonWaveHighScore'));
             console.log('Loaded high score:', highScore);
         }
+        
+        // Load music preference from localStorage
+        if (localStorage.getItem('neonWaveMusicEnabled') !== null) {
+            musicEnabled = localStorage.getItem('neonWaveMusicEnabled') === 'true';
+            updateMusicToggleButton();
+        }
     } catch (err) {
-        console.error('Error loading high score:', err);
+        console.error('Error loading saved preferences:', err);
     }
     
     // Start animation loop
@@ -94,6 +111,13 @@ async function initGame() {
         collectible.position.z = -30;
         collectible.position.x = LANES[1]; // Center lane
     }, 100);
+    
+    // Start background music if enabled
+    if (musicEnabled) {
+        setTimeout(() => {
+            startMusic();
+        }, 1000);
+    }
     
     // Load GitHub data - log detailed information to help debug
     window._gitHubProfileItemChance = GITHUB_PROFILE_ITEM_CHANCE;
@@ -124,6 +148,41 @@ async function initGame() {
     });
 }
 
+// Set up audio controls
+function setupAudioControls() {
+    // Get music toggle button
+    musicToggleButton = document.getElementById('music-toggle');
+    
+    // Add click event listener to toggle music
+    if (musicToggleButton) {
+        musicToggleButton.addEventListener('click', () => {
+            musicEnabled = toggleMusic();
+            updateMusicToggleButton();
+            
+            // Save preference
+            try {
+                localStorage.setItem('neonWaveMusicEnabled', musicEnabled.toString());
+            } catch (err) {
+                console.error('Error saving music preference:', err);
+            }
+        });
+    }
+    
+    // Set initial state
+    updateMusicToggleButton();
+}
+
+// Update music toggle button appearance
+function updateMusicToggleButton() {
+    if (!musicToggleButton) return;
+    
+    if (musicEnabled) {
+        musicToggleButton.classList.remove('disabled');
+    } else {
+        musicToggleButton.classList.add('disabled');
+    }
+}
+
 // Handle keyboard input
 function handleKeyDown(event) {
     // Prevent default action for arrow keys and space
@@ -131,7 +190,9 @@ function handleKeyDown(event) {
         event.key === 'ArrowLeft' || 
         event.key === 'ArrowRight' || 
         event.key === 'ArrowUp' || 
-        event.key === 'ArrowDown') {
+        event.key === 'ArrowDown' ||
+        event.key === 'm' ||
+        event.key === 'M') {
         event.preventDefault();
     }
     
@@ -146,6 +207,20 @@ function handleKeyDown(event) {
             refreshGame();
             return;
         }
+    }
+    
+    // Toggle music with M key
+    if (event.key === 'm' || event.key === 'M') {
+        musicEnabled = toggleMusic();
+        updateMusicToggleButton();
+        
+        // Save preference
+        try {
+            localStorage.setItem('neonWaveMusicEnabled', musicEnabled.toString());
+        } catch (err) {
+            console.error('Error saving music preference:', err);
+        }
+        return;
     }
     
     // Only handle movement if game is active
@@ -198,6 +273,11 @@ function startGame() {
     // Position the initial collectible at a comfortable distance
     collectible.position.z = -30;
     collectible.position.x = LANES[1]; // Center lane
+    
+    // Start music if enabled
+    if (musicEnabled) {
+        startMusic();
+    }
 }
 
 // Refresh the game
@@ -237,6 +317,11 @@ function refreshGame() {
     
     // Reset the last collectible time
     lastCollectibleTime = Date.now();
+    
+    // Restart music if enabled but not playing
+    if (musicEnabled) {
+        startMusic();
+    }
 }
 
 // Animation loop
@@ -401,5 +486,8 @@ export {
     profileData,
     sceneManager,
     startGame,
-    refreshGame
+    refreshGame,
+    musicEnabled,
+    toggleMusic,
+    setMusicVolume
 };

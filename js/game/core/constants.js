@@ -100,3 +100,7 @@ export const COLLECTIBLE_SCALE = 2.0;
 // Animation timing
 export const GRID_FLASH_INTERVAL = 120;
 export const GRID_FLASH_COUNT = 8;
+
+// Audio settings
+export const DEFAULT_MUSIC_ENABLED = true;
+export const DEFAULT_MUSIC_VOLUME = 0.6;
