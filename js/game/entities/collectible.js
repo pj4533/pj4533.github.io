@@ -23,6 +23,7 @@ export function createCollectible(currentLane, profileData, githubRepos, gitHubP
   const lane = Math.floor(Math.random() * 3);
   
   // Determine if this should be a GitHub profile collectible
+  // Always use profile items if we have them available (force balanced distribution)
   const isProfileItem = profileData.length > 0 && Math.random() < gitHubProfileItemChance;
   
   // For standard collectibles, choose a random type

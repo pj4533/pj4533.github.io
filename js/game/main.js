@@ -325,12 +325,11 @@ function animate() {
                     
                     console.log("Creating new collectible. Current count:", visibleCollectibles.length);
                     
-                    // Alternate between GitHub repos and profile data to ensure both appear
-                    // Force GitHub repo collectibles to appear regularly
-                    const useGitHubRepo = (collectibles.length % 3 === 0);
+                    // Randomly alternate between GitHub repos and profile data (50/50 chance)
+                    const useGitHubRepo = Math.random() < 0.5;
                     
-                    // Adjust chance based on what we want to display
-                    const chanceToUse = useGitHubRepo ? 0.0 : window._gitHubProfileItemChance;
+                    // Set chance to 0.5 for a balanced mix of GitHub and resume data
+                    const chanceToUse = 0.5;
                     
                     // Create collectible with controlled type distribution
                     const collectible = createCollectible(currentLane, profileData, githubRepos, chanceToUse);
