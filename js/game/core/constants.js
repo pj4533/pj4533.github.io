@@ -9,7 +9,7 @@ export const RESUME_DARK_COLOR = 0xcc4400;
 
 // Player settings
 export const PLAYER_SIZE = 0.6;
-export const PLAYER_SPEED = 0.1;
+export const PLAYER_SPEED = 0.2; // Doubled the speed for more exciting gameplay
 
 // Lane settings
 export const LANES = [-2, 0, 2];
@@ -19,8 +19,8 @@ export const DEFAULT_LANE = 1; // Center lane (0)
 export const DEFAULT_LEVEL = 1;
 
 // Collectible settings
-export const GITHUB_PROFILE_ITEM_CHANCE = 1.0;
-export const MAX_TIME_BETWEEN_COLLECTIBLES = 100; // ms
+export const GITHUB_PROFILE_ITEM_CHANCE = 0.7; // 70% chance for profile items, 30% for other collectibles
+export const MAX_TIME_BETWEEN_COLLECTIBLES = 1000; // ms - longer time to avoid too many collectibles
 
 // Camera settings
 export const CAMERA_FOV = 75;

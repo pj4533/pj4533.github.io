@@ -158,39 +158,17 @@ function startGame() {
         sceneManager.flashGrid();
     }, 500);
     
-    // Create initial collectibles gradually in batches instead of all at once
-    // This prevents the initial slowdown by spreading out the work
-    const createInitialCollectibles = (startIndex, batchSize) => {
-        for (let i = startIndex; i < startIndex + batchSize && i < 50; i++) {
-            // Force more GitHub profile items at the beginning
-            const forceHighProfileChance = i < 14;
-            const originalChance = window._gitHubProfileItemChance;
-            
-            if (forceHighProfileChance) {
-                window._gitHubProfileItemChance = 0.7; // 70% chance for profile item
-            }
-            
-            const collectible = createCollectible(currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
-            addCollectible(collectible, sceneManager.scene);
-            
-            // Restore original chance
-            window._gitHubProfileItemChance = originalChance;
-            
-            // Position collectibles
-            collectible.position.z = -15 - (i * 1.0);
-            collectible.position.x = LANES[i % 3];
-        }
+    // Only create a small number of initial collectibles
+    // The rest will be dynamically created during gameplay
+    for (let i = 0; i < 5; i++) {
+        // Create collectible with random properties
+        const collectible = createCollectible(currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
+        addCollectible(collectible, sceneManager.scene);
         
-        // Schedule next batch if needed
-        if (startIndex + batchSize < 50) {
-            setTimeout(() => {
-                createInitialCollectibles(startIndex + batchSize, batchSize);
-            }, 100); // 100ms delay between batches
-        }
-    };
-    
-    // Start by creating the first 10 collectibles immediately
-    createInitialCollectibles(0, 10);
+        // Position collectibles randomly but ensure they're spread out
+        collectible.position.z = -15 - (i * 5) - (Math.random() * 5); // More space between collectibles
+        collectible.position.x = LANES[Math.floor(Math.random() * LANES.length)]; // Random lane
+    }
 }
 
 // Refresh the game
@@ -219,27 +197,17 @@ function refreshGame() {
         sceneManager.flashGrid();
     }, 100);
     
-    // Create new collectibles gradually in batches to avoid lag
-    const createRefreshCollectibles = (startIndex, batchSize) => {
-        for (let i = startIndex; i < startIndex + batchSize && i < 20; i++) {
-            const collectible = createCollectible(currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
-            addCollectible(collectible, sceneManager.scene);
-            
-            // Position collectibles
-            collectible.position.z = -15 - (i * 1.0);
-            collectible.position.x = LANES[i % 3];
-        }
+    // Only create a small number of initial collectibles
+    // The rest will be dynamically created during gameplay
+    for (let i = 0; i < 5; i++) {
+        // Create collectible with random properties
+        const collectible = createCollectible(currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
+        addCollectible(collectible, sceneManager.scene);
         
-        // Schedule next batch if needed
-        if (startIndex + batchSize < 20) {
-            setTimeout(() => {
-                createRefreshCollectibles(startIndex + batchSize, batchSize);
-            }, 50); // Shorter delay for refresh since we're creating fewer objects
-        }
-    };
-    
-    // Start by creating the first batch of collectibles immediately
-    createRefreshCollectibles(0, 5);
+        // Position collectibles randomly but ensure they're spread out
+        collectible.position.z = -15 - (i * 5) - (Math.random() * 5); // More space between collectibles
+        collectible.position.x = LANES[Math.floor(Math.random() * LANES.length)]; // Random lane
+    }
     
     // Reset the last collectible time
     lastCollectibleTime = Date.now();
@@ -328,15 +296,30 @@ function animate() {
             // Update collectibles
             updateCollectibles(PLAYER_SPEED, sceneManager.scene);
             
-            // Create collectibles
+            // Create collectibles - more dynamically during gameplay
             try {
                 // Check if it's been too long since the last collectible was created
                 const timeSinceLastCollectible = currentTime - lastCollectibleTime;
                 
-                // Either create by random chance or force creation if it's been too long
-                if (Math.random() < 0.80 || timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES) {
+                // Create collectibles based on:
+                // 1. Random chance (lower than before to avoid too many collectibles)
+                // 2. Force creation if it's been too long
+                // 3. Keep a minimum number of collectibles in the scene
+                if (Math.random() < 0.30 || 
+                    timeSinceLastCollectible > MAX_TIME_BETWEEN_COLLECTIBLES || 
+                    collectibles.length < 3) {
+                    
+                    // Create a collectible with random properties
                     const collectible = createCollectible(currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
                     addCollectible(collectible, sceneManager.scene);
+                    
+                    // Position the collectible randomly
+                    // - Further away from the player (z between -30 and -50)
+                    // - In a random lane
+                    collectible.position.z = -30 - (Math.random() * 20);
+                    collectible.position.x = LANES[Math.floor(Math.random() * LANES.length)];
+                    
+                    // Update the last collectible time
                     lastCollectibleTime = currentTime;
                 }
                 
