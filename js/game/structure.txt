@@ -1,0 +1,21 @@
+/js/game/
+  - main.js (Entry point that imports and initializes everything)
+  - core/
+    - constants.js (Game constants like colors, sizes, etc.)
+    - setup.js (Initial setup, scene creation, etc.)
+    - loop.js (Main game loop)
+  - data/
+    - github.js (GitHub API interaction)
+    - profile.js (Profile data processing)
+  - entities/
+    - player.js (Player creation and movement)
+    - collectible.js (Collectible items)
+    - obstacle.js (Obstacle creation and handling)
+  - ui/
+    - text.js (Text rendering and display)
+    - interface.js (Game UI elements)
+  - effects/
+    - particles.js (Particle system and TextParticle class)
+    - animations.js (Visual effects and animations)
+  - utils/
+    - helpers.js (Utility functions)
