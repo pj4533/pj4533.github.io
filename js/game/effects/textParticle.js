@@ -97,19 +97,62 @@ export class TextParticle {
       // Make sure text is always a string
       let safeText = String(this.text || '');
       
-      // No text wrapping - only use text that fits in a single line
-      // This ensures no text is cut off with "..."
+      // Implement text wrapping for long text but with a limit on how many words
       const textLines = [];
+      const maxLineWidth = this.isRepoName ? 1500 : 1600; // Maximum width in pixels
       
-      // Deliberately limit text to be very brief to ensure it always fits
-      let displayText = safeText;
-      // If text is too long, just use the first word to avoid any wrapping issues
-      if (displayText.includes(' ')) {
-        displayText = displayText.split(' ')[0];
+      // Measure the full text width
+      const fullTextMetrics = context.measureText(safeText);
+      
+      if (fullTextMetrics.width > maxLineWidth) {
+        // Text needs wrapping
+        const words = safeText.split(' ');
+        let currentLine = '';
+        
+        // Process each word - limit to 8 words max
+        const maxWords = 8;
+        const limitedWords = words.slice(0, maxWords);
+        
+        limitedWords.forEach(word => {
+          // Measure current line with this word added
+          const testLine = currentLine ? currentLine + ' ' + word : word;
+          const testMetrics = context.measureText(testLine);
+          
+          if (testMetrics.width > maxLineWidth) {
+            // If adding this word exceeds max width, push current line
+            if (currentLine) {
+              textLines.push(currentLine);
+              
+              // Only add this word as a new line if we have fewer than 2 lines
+              if (textLines.length < 1) {
+                currentLine = word;
+              } else {
+                currentLine = '';
+              }
+            } else {
+              // Handle very long single words - use them as is
+              textLines.push(word);
+              currentLine = '';
+            }
+          } else {
+            // Add word to current line
+            currentLine = testLine;
+          }
+        });
+        
+        // Add the last line if any and we have fewer than 2 lines
+        if (currentLine && textLines.length < 2) {
+          textLines.push(currentLine);
+        }
+      } else {
+        // No wrapping needed
+        textLines.push(safeText);
       }
       
-      // Always use just a single line of text - never wrap
-      textLines.push(displayText);
+      // Ensure we have at least one line
+      if (textLines.length === 0) {
+        textLines.push(safeText.split(' ')[0]);
+      }
       
       // Calculate total height needed for all lines
       const lineHeight = fontSize * 1.2;

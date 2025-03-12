@@ -64,21 +64,20 @@ export function createExplodingRepoText(position, item, scene, explodingTexts) {
         case 'award': emoji = '🏆'; break;
         default: emoji = '';
       }
-      // Just show the name, nothing else - no emoji to save space
-      combinedText = item.name;
+      combinedText = emoji ? `${emoji} ${item.name}` : item.name;
     } else {
-      // For GitHub repos, only show the name, nothing else
-      combinedText = item.name;
-    }
-    
-    // Add either description or details (not both) to avoid text overflow
-    // Instead of truncating with "...", show complete shorter text
-    if (item.description && item.description.trim() !== '') {
-      // Pick shorter of name or description, and don't truncate it
-      const shorterText = (item.name.length < item.description.length) ? 
-                        item.name : 
-                        item.description;
-      combinedText = shorterText;
+      // For GitHub repos, format name and add available info
+      combinedText = item.name.toUpperCase();
+      
+      // Add language if available and short
+      if (item.language && item.language.length > 1 && item.language.length < 10) {
+        combinedText += ` [${item.language}]`;
+      }
+      
+      // Add stars if available
+      if (item.stars && item.stars > 0) {
+        combinedText += ` ★${item.stars}`;
+      }
     }
     
     // Create a single text particle with all the information
