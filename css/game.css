@@ -50,6 +50,35 @@
   margin-bottom: 10px;
 }
 
+/* Mobile styles */
+@media (max-width: 768px) {
+  #instructions {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+    max-width: 90%;
+  }
+  
+  .simple-intro {
+    font-size: 1.2rem;
+  }
+  
+  #game-ui-bottom {
+    bottom: 30px;
+  }
+}
+
+/* Mobile landscape orientation */
+@media (max-width: 768px) and (orientation: landscape) {
+  #game-ui-bottom {
+    bottom: 10px;
+  }
+  
+  #instructions {
+    font-size: 0.7rem;
+    padding: 5px 10px;
+  }
+}
+
 /* Game Overlay Screens */
 #game-overlay {
   position: absolute;
