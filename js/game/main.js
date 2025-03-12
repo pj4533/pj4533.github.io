@@ -23,7 +23,7 @@ import {
 } from './core/constants.js';
 
 // Game state variables
-let gameStarted = false;
+let gameStarted = true; // Start game immediately
 let gameOver = false;
 let score = 0;
 let highScore = 0;
@@ -72,8 +72,28 @@ async function initGame() {
     // Start animation loop
     animate();
     
+    // Hide the start screen immediately
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) {
+        startScreen.classList.add('hidden');
+    }
+    
+    // Initialize the last collectible time
+    lastCollectibleTime = Date.now();
+    
     // Flash the grid immediately when the page loads for emphasis
     setTimeout(() => sceneManager.flashGrid(), 500);
+    
+    // Start with a single collectible
+    setTimeout(() => {
+        // Create it far enough away to give player time to prepare
+        const collectible = createCollectible(currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
+        addCollectible(collectible, sceneManager.scene);
+        
+        // Position the initial collectible at a comfortable distance
+        collectible.position.z = -30;
+        collectible.position.x = LANES[1]; // Center lane
+    }, 100);
     
     // Load GitHub data - log detailed information to help debug
     window._gitHubProfileItemChance = GITHUB_PROFILE_ITEM_CHANCE;
@@ -115,12 +135,9 @@ function handleKeyDown(event) {
         event.preventDefault();
     }
     
-    // Handle spacebar to start the game
+    // Spacebar no longer needed to start game
     if (event.key === ' ') {
-        if (!gameStarted) {
-            startGame();
-            return;
-        }
+        // Game starts automatically, so nothing to do here
     }
     
     // Add R key to refresh the game and repos
