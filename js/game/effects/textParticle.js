@@ -59,8 +59,8 @@ export class TextParticle {
       // Create canvas for text with more width for longer text
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
-      canvas.width = 1536; // Increased for longer text
-      canvas.height = 768;  // Increased height for wrapped text
+      canvas.width = 2048; // Significantly increased width for longer text
+      canvas.height = 1024;  // Significantly increased height for wrapped text
       
       // Safely convert color to hex (handle undefined or invalid colors)
       let hexColor;
@@ -158,22 +158,25 @@ export class TextParticle {
         const textWidth = maxWidth;
         const textHeight = totalTextHeight;
         
+        // Make the background larger to fit longer text
+        const padding = 80; // More horizontal padding
+        
         // First draw outer glow border
         context.fillStyle = `#${hexColor}33`; // Semi-transparent color matching the text
         context.fillRect(
-          canvas.width/2 - textWidth/2 - 28,
-          canvas.height/2 - textHeight/2 - 18,
-          textWidth + 56,
-          textHeight + 36
+          canvas.width/2 - textWidth/2 - (padding/2),
+          canvas.height/2 - textHeight/2 - 20,
+          textWidth + padding,
+          textHeight + 40
         );
         
         // Then draw solid black background
-        context.fillStyle = 'rgba(0, 0, 0, 0.85)'; // Darker background
+        context.fillStyle = 'rgba(0, 0, 0, 0.9)'; // Darker background
         context.fillRect(
-          canvas.width/2 - textWidth/2 - 24,
-          canvas.height/2 - textHeight/2 - 14,
-          textWidth + 48, 
-          textHeight + 28
+          canvas.width/2 - textWidth/2 - (padding/2) + 4,
+          canvas.height/2 - textHeight/2 - 16,
+          textWidth + padding - 8, 
+          textHeight + 32
         );
         
         // Reset fill style to gradient

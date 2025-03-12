@@ -82,9 +82,9 @@ export function createExplodingRepoText(position, item, scene, explodingTexts) {
     
     // Add brief description if available and not too long
     if (item.description && item.description.trim() !== '') {
-      // Keep description brief (first 30 chars max)
-      const shortDesc = item.description.length > 30 ? 
-                        item.description.substring(0, 27) + '...' : 
+      // Keep description brief (first 20 chars max for better display)
+      const shortDesc = item.description.length > 20 ? 
+                        item.description.substring(0, 17) + '...' : 
                         item.description;
       combinedText += `\n${shortDesc}`;
     }
