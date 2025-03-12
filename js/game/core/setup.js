@@ -372,6 +372,9 @@ export class SceneManager {
         this.scene.add(rightBarrier);
     }
 
+    // Store cached grids to avoid expensive traversal on each flash
+    cachedGrids = null;
+    
     /**
      * Flash the grid for visual effect
      */
@@ -379,18 +382,27 @@ export class SceneManager {
         const originalColors = [PRIMARY_GRID_COLOR1, PRIMARY_GRID_COLOR2];
         let flashCount = 0;
         
-        // Find all grid helpers in the scene
-        const allGrids = [];
-        this.scene.traverse(child => {
-            if (child instanceof THREE.GridHelper) {
-                allGrids.push(child);
-            }
-        });
+        // Find all grid helpers in the scene - use cached version if available
+        if (!this.cachedGrids) {
+            this.cachedGrids = [];
+            // Only do the expensive traversal once and cache the result
+            this.scene.traverse(child => {
+                if (child instanceof THREE.GridHelper) {
+                    this.cachedGrids.push(child);
+                }
+            });
+        }
+        
+        // Use a more efficient flashing approach
+        const allGrids = this.cachedGrids;
+        
+        // Reduce flash count for better performance during startup
+        const reducedFlashCount = 4; // Cut in half from original 8
         
         const flashInterval = setInterval(() => {
-            if (flashCount < GRID_FLASH_COUNT) {
+            if (flashCount < reducedFlashCount) {
                 if (flashCount % 2 === 0) {
-                    // Flash to bright white
+                    // Flash to bright white - only update main grid for better performance
                     allGrids.forEach(grid => {
                         if (grid.material && grid.material.length >= 2) {
                             grid.material[0].color.setHex(0xffffff);
@@ -402,7 +414,7 @@ export class SceneManager {
                     });
                 } else {
                     // Flash back to original colors
-                    allGrids.forEach((grid, index) => {
+                    allGrids.forEach((grid) => {
                         if (grid.material && grid.material.length >= 2) {
                             grid.material[0].color.setHex(originalColors[0]);
                             grid.material[1].color.setHex(originalColors[1]);
@@ -418,7 +430,7 @@ export class SceneManager {
             } else {
                 clearInterval(flashInterval);
             }
-        }, GRID_FLASH_INTERVAL);
+        }, GRID_FLASH_INTERVAL * 1.5); // Slightly longer interval between flashes
     }
 
     /**
