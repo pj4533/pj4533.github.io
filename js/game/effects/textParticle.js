@@ -12,13 +12,42 @@ export class TextParticle {
   constructor(text, position, color, isRepoName = false) {
     this.text = text;
     this.position = position.clone();
+    this.initialY = position.y; // Store initial Y position to calculate relative height
     this.isRepoName = isRepoName;
     
-    // Minimal movement for maximum readability - almost static text
+    // Static variable to track the last direction used
+    if (!TextParticle.lastDirection) {
+      TextParticle.lastDirection = 0; // 0: left, 1: up, 2: right
+    }
+    
+    // Get the next direction (different from the previous one)
+    TextParticle.lastDirection = (TextParticle.lastDirection + 1) % 3;
+    const direction = TextParticle.lastDirection;
+    
+    // Set velocity based on direction to avoid overlapping
+    const baseSpeed = 0.05; // Increased base movement speed
+    let xVelocity = 0;
+    let yVelocity = 0;
+    
+    switch (direction) {
+      case 0: // Left
+        xVelocity = -baseSpeed * 0.8;
+        yVelocity = baseSpeed * 1.2; // Increased upward velocity
+        break;
+      case 1: // Straight up
+        xVelocity = 0;
+        yVelocity = baseSpeed * 1.5; // Much higher upward velocity
+        break;
+      case 2: // Right
+        xVelocity = baseSpeed * 0.8;
+        yVelocity = baseSpeed * 1.2; // Increased upward velocity
+        break;
+    }
+    
     this.velocity = new THREE.Vector3(
-      (Math.random() - 0.5) * 0.02, // Barely any horizontal movement
-      (Math.random() - 0.5) * 0.01 + 0.02, // Extremely gentle upward drift
-      (Math.random() - 0.5) * 0.02  // Minimal z-movement
+      xVelocity,
+      yVelocity,
+      (Math.random() - 0.5) * 0.01 // Minimal z-movement
     );
     
     // Almost no rotation for maximum readability
@@ -41,12 +70,12 @@ export class TextParticle {
     // Much larger scale, especially for repo names
     this.scale = isRepoName ? 2.5 : 1.5;
     
-    // Even slower fade for maximum readability
+    // Shorter lifetime for text particles
     this.life = 1.0;
-    this.lifeSpeed = isRepoName ? 0.0010 : 0.0025; // Much slower fade for better reading
+    this.lifeSpeed = isRepoName ? 0.004 : 0.006; // Much faster fade for shorter display time
     
-    // Much longer delay before fading starts for better readability
-    this.delayFade = isRepoName ? 240 : 120; // Significantly more frames before starting to fade
+    // Short delay before fading starts
+    this.delayFade = isRepoName ? 100 : 60; // Quick fade after reaching safe height
     
     this.createMesh();
   }
@@ -276,7 +305,17 @@ export class TextParticle {
         return false; // Return false to remove this particle
       }
       
-      // Update position with gentle movement
+      // Define a safe height threshold (relative to initial position)
+      const safeHeightThreshold = 2.5;
+      
+      // Slow down movement once text has reached a safe height
+      if (this.position.y - this.initialY > safeHeightThreshold) {
+        // Reduce velocity once at safe height
+        this.velocity.x *= 0.95;
+        this.velocity.y *= 0.80; // Slow down vertical movement more
+      }
+      
+      // Update position with directional movement
       this.position.add(this.velocity);
       this.mesh.position.copy(this.position);
       
@@ -296,18 +335,25 @@ export class TextParticle {
         }
       }
       
-      // Delayed fade effect - only start fading after delay
+      // Check if we've reached safe height to trigger receding effect
+      const atSafeHeight = this.position.y - this.initialY > 2.5;
+      
+      // Delayed recession effect - start receding if at safe height
       if (this.delayFade > 0) {
-        this.delayFade--;
+        // If at safe height, reduce delay more quickly to start receding sooner
+        this.delayFade -= atSafeHeight ? 3 : 1;
       } else {
-        this.life -= this.lifeSpeed;
+        // Accelerate life decrease once at safe height (controls how quickly text recedes)
+        const lifeDecreaseMultiplier = atSafeHeight ? 1.5 : 1.0;
+        this.life -= this.lifeSpeed * lifeDecreaseMultiplier;
         
-        // For smoother fade out, especially for repo names
-        if (this.isRepoName) {
-          // Repo names stay fully visible longer
-          this.opacity = this.life > 0.7 ? 1.0 : this.life;
+        // Only fade at the very end of life (last 10%)
+        if (this.life < 0.1) {
+          // Quick fade at the very end
+          this.opacity = this.life * 10; // Map 0.1-0 to 1-0
         } else {
-          this.opacity = this.life;
+          // Otherwise maintain full opacity while receding
+          this.opacity = 1.0;
         }
         
         if (this.mesh.material) {
@@ -315,14 +361,24 @@ export class TextParticle {
         }
       }
       
-      // Gentle scale increase - different for repo names vs description words
+      // Apply scale and movement effects based on fade state
       let scaleFactor;
-      if (this.isRepoName) {
-        // Repo names grow more slowly
-        scaleFactor = 1 + (1 - this.life) * 0.3;
+      
+      // If we're receding (past the delay period)
+      if (this.delayFade <= 0) {
+        // Calculate recession progress
+        const recessProgress = 1 - this.life; // 0 to 1 as text recedes
+        
+        // Gradually reduce scale more dramatically as text recedes
+        scaleFactor = 1 - recessProgress * 0.7; // Shrink by up to 70%
+        
+        // Move text backward in z-space (away from camera) at an accelerating rate
+        // Use quadratic easing for accelerating backward movement
+        const zMovement = recessProgress * recessProgress * 0.15; // Accelerating backward movement
+        this.mesh.position.z -= zMovement;
       } else {
-        // Description words can grow a bit more
-        scaleFactor = 1 + (1 - this.life) * 0.5;
+        // Before recession starts, maintain normal scale
+        scaleFactor = 1;
       }
       
       // Apply scale (safely)

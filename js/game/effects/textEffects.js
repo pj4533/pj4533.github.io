@@ -34,9 +34,9 @@ export function createExplodingRepoText(position, item, scene, explodingTexts) {
       'job', 'job_details', 'skills', 'education', 'award'
     ].includes(item.type);
     
-    // Position for the single text display
+    // Position for the single text display - starting at a higher position
     const textPosition = position.clone();
-    textPosition.y += 0.8; // Slightly raised position
+    textPosition.y += 1.5; // Much higher initial position to avoid blocking collectibles
     textPosition.z -= 1; // Bring slightly closer to camera for emphasis
     
     // Determine display color based on source
