@@ -11,6 +11,9 @@ let collectibles = [];
 let lastCollectibleTime = 0;
 const MAX_TIME_BETWEEN_COLLECTIBLES = 100; // Maximum 0.1 seconds between collectibles
 
+// Track the last displayed item to avoid showing the same text twice in a row
+let lastDisplayedItemId = null;
+
 /**
  * Create a new collectible item in the game
  * @param {number} currentLane - Current lane index for collectible placement
@@ -52,10 +55,31 @@ export function createCollectible(currentLane, profileData, githubRepos, gitHubP
         selectedItems = profileData; // Fall back to all items if the filtered array is empty
       }
       
-      // Choose a random item from the selected items
-      const randomIndex = Math.floor(Math.random() * selectedItems.length);
+      // Choose a random item from the selected items, avoiding the last displayed item
+      let attempts = 0;
+      let selectedItem;
+      
+      do {
+        const randomIndex = Math.floor(Math.random() * selectedItems.length);
+        selectedItem = selectedItems[randomIndex];
+        attempts++;
+        
+        // Break after a few attempts to avoid infinite loop with a small pool of items
+        if (attempts > 5) break;
+      } while (
+        // Only avoid duplication if we have multiple items to choose from
+        selectedItems.length > 1 && 
+        lastDisplayedItemId && 
+        (
+          // Check the ID first if available
+          (selectedItem.id && selectedItem.id === lastDisplayedItemId) ||
+          // Fall back to name comparison if no IDs
+          (!selectedItem.id && selectedItem.name === lastDisplayedItemId)
+        )
+      );
+      
       collectibleUserData.dataSource = 'profile';
-      collectibleUserData.dataItem = selectedItems[randomIndex];
+      collectibleUserData.dataItem = selectedItem;
     } else {
       // If no profile data is available yet, just mark as profile source
       collectibleUserData.dataSource = 'profile';
@@ -185,8 +209,30 @@ export function createCollectible(currentLane, profileData, githubRepos, gitHubP
   
   // Immediately assign a GitHub repo to this collectible
   if (githubRepos && githubRepos.length > 0) {
-    const randomIndex = Math.floor(Math.random() * githubRepos.length);
-    collectibleUserData.dataItem = githubRepos[randomIndex];
+    // Try to avoid showing the same repo twice in a row
+    let attempts = 0;
+    let selectedRepo;
+    
+    do {
+      const randomIndex = Math.floor(Math.random() * githubRepos.length);
+      selectedRepo = githubRepos[randomIndex];
+      attempts++;
+      
+      // Break after a few attempts to avoid infinite loop with a small pool of repos
+      if (attempts > 5) break;
+    } while (
+      // Only avoid duplication if we have multiple repos to choose from
+      githubRepos.length > 1 && 
+      lastDisplayedItemId && 
+      (
+        // Check the ID first if available
+        (selectedRepo.id && selectedRepo.id === lastDisplayedItemId) ||
+        // Fall back to name comparison if no IDs
+        (!selectedRepo.id && selectedRepo.name === lastDisplayedItemId)
+      )
+    );
+    
+    collectibleUserData.dataItem = selectedRepo;
     console.log("Assigned GitHub repo:", collectibleUserData.dataItem.name);
   } else {
     console.log("No GitHub repos available to assign!");
@@ -540,6 +586,17 @@ export function createCollectionEffect(x, y, z, showRepo, scene, explodingTexts,
         description: dataItem.description || "none",
         details: dataItem.details || "none"
       });
+      
+      // Store the current item's ID to avoid repeating it next time
+      if (dataItem.id) {
+        lastDisplayedItemId = dataItem.id;
+      } else if (dataItem.name) {
+        // If no ID exists, use the name as a fallback identifier
+        lastDisplayedItemId = dataItem.name;
+      }
+      
+      // Log which item we're tracking to avoid repetition
+      console.log("Tracking last displayed item:", lastDisplayedItemId);
       
       // Force the popup to display by calling function directly - but only with 3D text effects
       createExplodingRepoText(new THREE.Vector3(x, y, z), dataItem, scene, explodingTexts);
