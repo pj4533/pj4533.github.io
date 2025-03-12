@@ -325,14 +325,21 @@ function processGitHubProfileData(data) {
     });
     
     // Add job description separately for readability
-    items.push({
+    console.log("Adding job details for current role:", currentJob.company);
+    const jobDetails = {
       name: "Current Role",
       description: currentJob.company,
       details: currentJob.description,
       type: "job_details",
       color: resumeColor,
       source: "resume"
-    });
+    };
+    console.log("Created job details item:", jobDetails);
+    
+    // CRITICAL FIX: Make a direct global reference for emergency use
+    window._resumeJobDetails = jobDetails;
+    
+    items.push(jobDetails);
     
     // Add other jobs
     data.resumeData.experience.slice(1).forEach(job => {
@@ -898,11 +905,14 @@ function createExplodingRepoText(position, item) {
       }
     }
     if (gameContainer) {
-      // Create a temporary div for displaying info
+      // Debug the game container
+      console.log("Game container found:", gameContainer);
+      
+      // CRITICAL FIX: Create a temporary div for displaying info
       const infoDiv = document.createElement('div');
       infoDiv.id = popupId;
       infoDiv.className = 'repo-popup';
-      infoDiv.style.position = 'absolute';
+      infoDiv.style.position = 'fixed'; // Changed from absolute to fixed
       infoDiv.style.top = '30%';
       infoDiv.style.left = '50%';
       infoDiv.style.transform = 'translate(-50%, -50%)';
@@ -912,7 +922,7 @@ function createExplodingRepoText(position, item) {
       infoDiv.style.borderRadius = '10px';
       infoDiv.style.border = '2px solid #00ffff';
       infoDiv.style.fontFamily = '"JetBrains Mono", monospace';
-      infoDiv.style.zIndex = '1000';
+      infoDiv.style.zIndex = '9999'; // Increased z-index to ensure visibility
       infoDiv.style.textAlign = 'center';
       infoDiv.style.fontSize = '18px';
       infoDiv.style.maxWidth = '80%';
@@ -920,7 +930,11 @@ function createExplodingRepoText(position, item) {
       infoDiv.style.transition = 'all 0.3s ease-out';
       infoDiv.style.textShadow = '0 0 5px currentColor';
       infoDiv.style.opacity = '0';
-      infoDiv.style.transform = 'translate(-50%, -60%)';
+      infoDiv.style.pointerEvents = 'none'; // Prevent blocking interaction
+      
+      // CRITICAL FIX: Add visibility forcing
+      infoDiv.style.display = 'block !important';
+      infoDiv.style.visibility = 'visible !important';
       
       // Add custom animation class 
       const styleSheet = document.createElement('style');
@@ -930,6 +944,11 @@ function createExplodingRepoText(position, item) {
           50% { box-shadow: 0 0 15px currentColor; }
           100% { box-shadow: 0 0 5px currentColor; }
         }
+        
+        .repo-popup {
+          display: block !important;
+          visibility: visible !important;
+        }
       `;
       document.head.appendChild(styleSheet);
       
@@ -937,6 +956,8 @@ function createExplodingRepoText(position, item) {
       
       // Determine if this is a GitHub or resume item
       const isResume = item.source === 'resume';
+      console.log("Is resume item?", isResume, "Source:", item.source);
+      
       infoDiv.style.color = isResume ? '#ff5700' : '#6cc644';
       infoDiv.style.borderColor = isResume ? '#ff5700' : '#6cc644';
       infoDiv.style.boxShadow = `0 0 10px ${isResume ? '#ff5700' : '#6cc644'}`;
@@ -991,34 +1012,50 @@ function createExplodingRepoText(position, item) {
         infoDiv.appendChild(metaElem);
       }
       
-      // Add to the DOM
-      gameContainer.appendChild(infoDiv);
+      // CRITICAL FIX: Add to document body instead of game container
+      document.body.appendChild(infoDiv);
+      console.log("Added popup to document body:", infoDiv);
+      
+      // CRITICAL FIX: Force a browser reflow to ensure the element is rendered
+      void infoDiv.offsetWidth;
       
       // Trigger animation by setting a timeout to allow the DOM to update
       setTimeout(() => {
         infoDiv.style.opacity = '1';
         infoDiv.style.transform = 'translate(-50%, -50%)';
+        console.log("Made popup visible");
       }, 10);
       
-      // Begin fade out after 3 seconds, then remove
+      // Begin fade out after 5 seconds (increased from 3), then remove
       setTimeout(() => {
         if (infoDiv) {
           infoDiv.style.opacity = '0';
           infoDiv.style.transform = 'translate(-50%, -40%)';
+          console.log("Starting to fade out popup");
           // Remove after fade completes
           setTimeout(() => {
             if (infoDiv && infoDiv.parentNode) {
               infoDiv.parentNode.removeChild(infoDiv);
+              console.log("Removed popup from DOM");
             }
           }, 500);
         }
-      }, 3000);
+      }, 5000);
       
       // Position newer popups higher than older ones to prevent overlap
-      const existingCount = document.querySelectorAll('.repo-popup').length;
+      const existingPopups = document.querySelectorAll('.repo-popup');
+      const existingCount = existingPopups.length;
       if (existingCount > 0) {
         infoDiv.style.top = (20 + (existingCount * 10)) + '%';
       }
+    } else {
+      // CRITICAL FIX: If game container not found, create it
+      console.error("Game container not found! Creating fallback container");
+      const fallbackContainer = document.createElement('div');
+      fallbackContainer.id = 'game-container';
+      document.body.appendChild(fallbackContainer);
+      // Try again with the new container
+      createExplodingRepoText(position, item);
     }
     
     if (!item || !position) {
@@ -2082,6 +2119,11 @@ function createCollectible() {
       collectible.userData.dataSource = userData.dataSource || 'github';
     }
     
+    // CRITICAL FIX: Make sure dataItem is properly set in userData for both standard collectibles and profile items
+    if (userData.dataItem && !collectible.userData.dataItem) {
+      collectible.userData.dataItem = userData.dataItem;
+    }
+    
     // This code block was for LinkedIn data, which is not used anymore
     // We now use GitHub and resume data instead
   } catch (error) {
@@ -2316,9 +2358,13 @@ function createCollectionEffect(x, y, z, showRepo = true) {
     let dataSource = 'github'; // Default to GitHub
     let dataItem = null;
     
+    // CRITICAL FIX: Debug showRepo value
+    console.log('ShowRepo is true, attempting to display data');
+    
     // Use the collectible's userData directly if possible
     try {
       // Try to get from the collectible that was just collected
+      // CRITICAL FIX: Scan all collectibles just before they're removed
       const collectedItem = collectibles.find(c => 
         Math.abs(c.position.x - x) < 0.5 && 
         Math.abs(c.position.y - y) < 0.5 && 
@@ -2338,34 +2384,95 @@ function createCollectionEffect(x, y, z, showRepo = true) {
         }
       }
       
-      // CRITICAL FIX: If we couldn't find the data from the collectible, use fallback data
+      // CRITICAL FIX: If we couldn't find the data from the collectible, use resume data as fallback
       if (!dataItem) {
         console.log("No data item found for collectible - using fallback data");
-        // Try to get a random item from either resume or GitHub data
-        if (profileData && profileData.length > 0) {
+        
+        // Prioritize resume data for fallback
+        const resumeItems = profileData ? profileData.filter(item => item.source === 'resume') : [];
+        if (resumeItems && resumeItems.length > 0) {
+          // Get a random resume item as fallback
+          const randomIndex = Math.floor(Math.random() * resumeItems.length);
+          dataItem = resumeItems[randomIndex];
+          dataSource = 'profile';
+          console.log("Using fallback RESUME data:", dataItem);
+        }
+        // Only fall back to GitHub data if no resume data is available
+        else if (profileData && profileData.length > 0) {
           const randomIndex = Math.floor(Math.random() * profileData.length);
           dataItem = profileData[randomIndex];
           dataSource = 'profile';
           console.log("Using fallback profile data:", dataItem);
-        } else if (githubRepos && githubRepos.length > 0) {
+        } 
+        else if (githubRepos && githubRepos.length > 0) {
           const randomIndex = Math.floor(Math.random() * githubRepos.length);
           dataItem = githubRepos[randomIndex];
           dataSource = 'github';
           console.log("Using fallback GitHub repo data:", dataItem);
         }
+        
+        // CRITICAL FIX: Last resort - create a dummy item if nothing else works
+        if (!dataItem) {
+          console.log("Creating emergency dummy data item");
+          dataItem = {
+            name: "Resume Data",
+            description: "Professional Experience",
+            details: "Your resume data will appear here",
+            source: "resume",
+            type: "job_details",
+            color: 0xff5700
+          };
+        }
       }
     } catch (error) {
       console.error('Error accessing collectible userData:', error);
-      // Fall back to default GitHub display
+      // Fall back to creating a dummy item
+      dataItem = {
+        name: "Resume Data",
+        description: "Professional Experience",
+        details: "Error retrieving data, please try again",
+        source: "resume",
+        type: "job_details",
+        color: 0xff5700
+      };
     }
     
     console.log('Ready to display data - source:', dataSource, 'dataItem:', dataItem);
     
-    // CRITICAL FIX: Always display something regardless of source
-    // We'll choose either profile data or repo data based on what's available
+    // CRITICAL FIX: Always try to display something
+    // Force display even if dataItem is somehow still null
     if (dataItem) {
       console.log('Displaying data item, source:', dataSource);
+      
+      // CRITICAL FIX: Force the popup to display by calling function directly
       createExplodingRepoText(new THREE.Vector3(x, y, z), dataItem);
+      
+      // CRITICAL FIX: Also try an emergency fallback DOM display 
+      try {
+        const emergencyDiv = document.createElement('div');
+        emergencyDiv.style.position = 'fixed';
+        emergencyDiv.style.top = '50%';
+        emergencyDiv.style.left = '50%';
+        emergencyDiv.style.transform = 'translate(-50%, -50%)';
+        emergencyDiv.style.zIndex = '99999';
+        emergencyDiv.style.backgroundColor = 'black';
+        emergencyDiv.style.color = dataItem.source === 'resume' ? '#ff5700' : '#6cc644';
+        emergencyDiv.style.padding = '20px';
+        emergencyDiv.style.borderRadius = '10px';
+        emergencyDiv.style.fontWeight = 'bold';
+        emergencyDiv.style.fontSize = '24px';
+        emergencyDiv.textContent = dataItem.name + ': ' + (dataItem.description || '');
+        
+        document.body.appendChild(emergencyDiv);
+        
+        setTimeout(() => {
+          if (emergencyDiv.parentNode) {
+            emergencyDiv.parentNode.removeChild(emergencyDiv);
+          }
+        }, 5000);
+      } catch (e) {
+        console.error("Emergency display failed:", e);
+      }
       
       // Refresh GitHub profile data occasionally
       if (Math.random() < 0.15) { // 15% chance to refresh
@@ -2377,6 +2484,8 @@ function createCollectionEffect(x, y, z, showRepo = true) {
           console.error('Error refreshing GitHub profile data:', err);
         });
       }
+    } else {
+      console.error("CRITICAL ERROR: Still couldn't find any data to display!");
     }
       
     // Always cycle through repositories to ensure variety
@@ -3186,9 +3295,61 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// CRITICAL FIX: Create a global emergency resume data item for testing
+window._createEmergencyResumeData = function() {
+  console.log("Creating emergency resume data");
+  return {
+    name: "Current Role",
+    description: "Evertrue",
+    details: "Architect, write, maintain and ship the iOS platform for all mobile applications at Evertrue. Initially using Objective C, transitioning to Swift, spread across several reusable shared libraries, including SiriKit and Spotlight search extensions.",
+    type: "job_details",
+    color: 0xff5700,
+    source: "resume"
+  };
+};
+
+// CRITICAL FIX: Force display a test popup to verify DOM element creation works
+window._testPopupDisplay = function() {
+  console.log("Testing popup display");
+  const testItem = window._resumeJobDetails || window._createEmergencyResumeData();
+  
+  // Create a simple fixed position popup
+  const testDiv = document.createElement('div');
+  testDiv.style.position = 'fixed';
+  testDiv.style.top = '50%';
+  testDiv.style.left = '50%';
+  testDiv.style.transform = 'translate(-50%, -50%)';
+  testDiv.style.zIndex = '99999';
+  testDiv.style.backgroundColor = 'black';
+  testDiv.style.color = '#ff5700';
+  testDiv.style.padding = '20px';
+  testDiv.style.borderRadius = '10px';
+  testDiv.style.fontWeight = 'bold';
+  testDiv.style.fontSize = '24px';
+  testDiv.style.border = '2px solid #ff5700';
+  testDiv.textContent = `TEST POPUP: ${testItem.name}: ${testItem.description}`;
+  
+  document.body.appendChild(testDiv);
+  
+  setTimeout(() => {
+    if (testDiv.parentNode) {
+      testDiv.parentNode.removeChild(testDiv);
+    }
+  }, 3000);
+  
+  return "Test popup created";
+};
+
 // CRITICAL FIX: Enhanced keyboard event handling to ensure space bar works
 window.addEventListener('keydown', function(event) {
   console.log("Key pressed:", event.key, event.code);
+  
+  // CRITICAL FIX: Add test key (T key) to force display a test popup
+  if (event.key === 't' || event.key === 'T') {
+    console.log("TEST KEY PRESSED");
+    window._testPopupDisplay();
+    return;
+  }
   
   // Handle the space key for controlling the game
   if (event.key === ' ' || event.code === 'Space') {
