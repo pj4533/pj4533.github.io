@@ -514,38 +514,16 @@ export function createCollectionEffect(x, y, z, showRepo, scene, explodingTexts,
       };
     }
     
-    // Always try to display something
-    // Force display even if dataItem is somehow still null
-    if (dataItem) {
-      // Force the popup to display by calling function directly
+    // Only display data items that have visual effects - no empty or placeholder items
+    if (dataItem && 
+        // Only show items that have meaningful content (name and one of: description, language, stars)
+        dataItem.name && 
+        (dataItem.description || dataItem.language || dataItem.stars || dataItem.details)) {
+      
+      // Force the popup to display by calling function directly - but only with 3D text effects
       createExplodingRepoText(new THREE.Vector3(x, y, z), dataItem, scene, explodingTexts);
       
-      // Also try an emergency fallback DOM display 
-      try {
-        const emergencyDiv = document.createElement('div');
-        emergencyDiv.style.position = 'fixed';
-        emergencyDiv.style.top = '50%';
-        emergencyDiv.style.left = '50%';
-        emergencyDiv.style.transform = 'translate(-50%, -50%)';
-        emergencyDiv.style.zIndex = '99999';
-        emergencyDiv.style.backgroundColor = 'black';
-        emergencyDiv.style.color = dataItem.source === 'resume' ? '#ff5700' : '#6cc644';
-        emergencyDiv.style.padding = '20px';
-        emergencyDiv.style.borderRadius = '10px';
-        emergencyDiv.style.fontWeight = 'bold';
-        emergencyDiv.style.fontSize = '24px';
-        emergencyDiv.textContent = dataItem.name + ': ' + (dataItem.description || '');
-        
-        document.body.appendChild(emergencyDiv);
-        
-        setTimeout(() => {
-          if (emergencyDiv.parentNode) {
-            emergencyDiv.parentNode.removeChild(emergencyDiv);
-          }
-        }, 5000);
-      } catch (e) {
-        console.error("Emergency display failed:", e);
-      }
+      // No longer show emergency DOM display - only use the 3D text effects
     }
   }
   
