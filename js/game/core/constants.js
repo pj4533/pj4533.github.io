@@ -20,7 +20,7 @@ export const DEFAULT_LEVEL = 1;
 
 // Collectible settings
 export const GITHUB_PROFILE_ITEM_CHANCE = 0.7; // 70% chance for profile items, 30% for other collectibles
-export const MAX_TIME_BETWEEN_COLLECTIBLES = 1000; // ms - longer time to avoid too many collectibles
+export const MAX_TIME_BETWEEN_COLLECTIBLES = 2000; // ms - much longer time to space out collectibles
 
 // Camera settings
 export const CAMERA_FOV = 75;
