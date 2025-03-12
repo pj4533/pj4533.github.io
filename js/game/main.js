@@ -13,7 +13,7 @@ import {
 } from './entities/collectible.js';
 import { fetchGitHubRepos } from './data/github.js';
 import { fetchGitHubProfileData, processGitHubProfileData } from './data/profile.js';
-import { initAudio, startMusic, stopMusic, toggleMusic, setMusicVolume } from './core/audio.js';
+import { initAudio, startMusic, stopMusic, toggleMusic, setMusicVolume, unlockAudio } from './core/audio.js';
 
 import { 
     PLAYER_SPEED, 
@@ -112,7 +112,30 @@ async function initGame() {
         collectible.position.x = LANES[1]; // Center lane
     }, 100);
     
-    // Start background music if enabled
+    // Set up a user interaction handler to start music
+    // This handles browsers' autoplay policy restrictions
+    const startMusicOnInteraction = () => {
+        // Unlock audio context first (important for iOS)
+        unlockAudio();
+        
+        if (musicEnabled) {
+            console.log("Starting music after user interaction");
+            startMusic();
+        }
+        
+        // Remove the event listeners after first interaction
+        document.removeEventListener('click', startMusicOnInteraction);
+        document.removeEventListener('keydown', startMusicOnInteraction);
+        window.removeEventListener('touchstart', startMusicOnInteraction);
+    };
+    
+    // Add event listeners for all types of user interaction
+    document.addEventListener('click', startMusicOnInteraction);
+    document.addEventListener('keydown', startMusicOnInteraction);
+    window.addEventListener('touchstart', startMusicOnInteraction);
+    
+    // Also attempt to start music with timeout, but this may not work
+    // due to browser autoplay policies
     if (musicEnabled) {
         setTimeout(() => {
             startMusic();
@@ -156,6 +179,9 @@ function setupAudioControls() {
     // Add click event listener to toggle music
     if (musicToggleButton) {
         musicToggleButton.addEventListener('click', () => {
+            // Unlock audio first (important for iOS and mobile browsers)
+            unlockAudio();
+            
             musicEnabled = toggleMusic();
             updateMusicToggleButton();
             
@@ -211,6 +237,9 @@ function handleKeyDown(event) {
     
     // Toggle music with M key
     if (event.key === 'm' || event.key === 'M') {
+        // Unlock audio first (needed for iOS and some browsers)
+        unlockAudio();
+        
         musicEnabled = toggleMusic();
         updateMusicToggleButton();
         

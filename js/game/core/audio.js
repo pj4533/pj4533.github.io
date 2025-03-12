@@ -51,21 +51,19 @@ const melodyPatterns = [
 // Init function - creates the audio context and sets up the tracks
 export function initAudio() {
   try {
-    // Create audio context with fallback for older browsers
-    window.AudioContext = window.AudioContext || window.webkitAudioContext;
-    audioContext = new AudioContext();
-    
-    // Create master gain node (volume control)
-    masterGainNode = audioContext.createGain();
-    masterGainNode.gain.value = 0.6; // Set overall volume
-    masterGainNode.connect(audioContext.destination);
-    
-    // Resume AudioContext if it's suspended (needed for Chrome's autoplay policy)
-    if (audioContext.state === 'suspended') {
-      audioContext.resume();
+    // Only create audio context if it doesn't exist yet
+    if (!audioContext) {
+      // Create audio context with fallback for older browsers
+      window.AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioContext();
+      
+      // Create master gain node (volume control)
+      masterGainNode = audioContext.createGain();
+      masterGainNode.gain.value = 0.6; // Set overall volume
+      masterGainNode.connect(audioContext.destination);
+      
+      console.log('Audio system initialized with state:', audioContext.state);
     }
-    
-    console.log('Audio system initialized');
     return true;
   } catch (e) {
     console.error('Audio system could not be initialized:', e);
@@ -78,15 +76,21 @@ export function toggleMusic() {
   musicEnabled = !musicEnabled;
   
   if (musicEnabled) {
-    if (!isPlaying) {
-      startMusic();
+    // Ensure we reinitialize if needed
+    if (!audioContext) {
+      initAudio();
     }
+    
+    // Always try to start music, even if we think it's playing
+    // This helps recover from browser-suspended contexts
+    startMusic();
   } else {
     if (isPlaying) {
       stopMusic();
     }
   }
   
+  console.log(`Music toggled: ${musicEnabled ? 'ON' : 'OFF'}`);
   return musicEnabled;
 }
 
@@ -97,19 +101,29 @@ export function startMusic() {
     if (!success) return false;
   }
   
-  // If context is suspended, resume it
+  // If context is suspended, resume it and start playing
   if (audioContext.state === 'suspended') {
-    audioContext.resume();
+    // Use a promise to ensure we only start playing after context is resumed
+    audioContext.resume().then(() => {
+      console.log('AudioContext resumed successfully');
+      startPlayback();
+    });
+  } else {
+    // Context already running, start immediately
+    startPlayback();
   }
   
+  return true;
+}
+
+// Helper to start actual playback
+function startPlayback() {
   if (!isPlaying) {
     isPlaying = true;
     nextNoteTime = audioContext.currentTime;
     scheduleNotes();
-    console.log('Music started');
+    console.log('Music started - context state:', audioContext.state);
   }
-  
-  return true;
 }
 
 // Stop the music
@@ -525,4 +539,24 @@ export function setMusicVolume(volume) {
 // Utility: Convert MIDI note to frequency
 function midiToFrequency(note) {
   return 440 * Math.pow(2, (note - 69) / 12);
+}
+
+/**
+ * Helper function to unlock audio on iOS and other mobile browsers 
+ * Must be called from a user interaction event handler
+ */
+export function unlockAudio() {
+  if (!audioContext) {
+    initAudio();
+  }
+  
+  // Create and immediately play a silent buffer
+  if (audioContext.state === 'suspended') {
+    const buffer = audioContext.createBuffer(1, 1, 22050);
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+    source.start(0);
+    console.log('Audio unlocked');
+  }
 }
