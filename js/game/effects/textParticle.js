@@ -180,6 +180,50 @@ export class TextParticle {
         textLines.push(safeText.split(' ')[0]);
       }
       
+      // Add a descriptive label at the beginning if this is a repo name or profile item
+      if (this.isRepoName) {
+        // Determine the type of data from the first line and content patterns
+        let dataTypeLabel = "";  // Default to empty string
+        const firstLine = textLines[0] || "";
+        
+        // Check for profile data type from emoji
+        if (firstLine.includes('👤')) dataTypeLabel = "GITHUB PROFILE";
+        else if (firstLine.includes('📍')) dataTypeLabel = "LOCATION";
+        else if (firstLine.includes('📊')) dataTypeLabel = "GITHUB STATISTICS";
+        else if (firstLine.includes('💻')) dataTypeLabel = "PROGRAMMING LANGUAGES";
+        else if (firstLine.includes('⭐')) dataTypeLabel = "FEATURED REPOSITORY";
+        else if (firstLine.includes('🏢')) dataTypeLabel = "EMPLOYMENT";
+        else if (firstLine.includes('💼')) dataTypeLabel = "JOB DETAILS";
+        else if (firstLine.includes('🔧')) dataTypeLabel = "TECHNICAL SKILLS";
+        else if (firstLine.includes('🎓')) dataTypeLabel = "EDUCATION";
+        else if (firstLine.includes('🏆')) dataTypeLabel = "AWARD";
+        // Special detection for GitHub repositories - any of these characteristics identify a repo:
+        // 1. Name is all uppercase (GitHub repos are formatted this way in the game)
+        // 2. Contains language tag in square brackets like [JavaScript]
+        // 3. Contains star count with star emoji (★)
+        else if (
+          // Check if the first line is all uppercase (how repos are formatted)
+          firstLine === firstLine.toUpperCase() && 
+          firstLine.length > 0 &&
+          // Additional checks to avoid false positives on other uppercase text
+          (
+            // Has language tag [JavaScript] format
+            firstLine.includes('[') && firstLine.includes(']') ||
+            // Has star count
+            firstLine.includes('★') ||
+            // Has multiple lines including a description (typical repo format)
+            (textLines.length > 1 && !firstLine.includes('«') && !firstLine.includes('»'))
+          )
+        ) {
+          dataTypeLabel = "GITHUB REPOSITORY";
+        }
+        
+        // Only add the label if it's not empty
+        if (dataTypeLabel) {
+          textLines.unshift(`« ${dataTypeLabel} »`);
+        }
+      }
+      
       // Calculate total height needed for all lines
       const lineHeight = fontSize * 1.2;
       const totalTextHeight = textLines.length * lineHeight;
@@ -197,8 +241,8 @@ export class TextParticle {
         const textWidth = maxWidth;
         const textHeight = totalTextHeight;
         
-        // Make the background larger to fit longer text
-        const padding = 80; // More horizontal padding
+        // Make the background larger to fit longer text and the header label
+        const padding = 100; // More horizontal padding for descriptive label
         
         // First draw outer glow border
         context.fillStyle = `#${hexColor}33`; // Semi-transparent color matching the text
@@ -233,9 +277,32 @@ export class TextParticle {
         const lineY = startY + (index * lineHeight);
         const textX = canvas.width/2;
         
-        // Draw text (first stroke for outline, then fill)
-        context.strokeText(line, textX, lineY);
-        context.fillText(line, textX, lineY);
+        // Special styling for the header label (if present)
+        if (line.includes('«') && line.includes('»')) {
+          // Save current context to restore after
+          context.save();
+          
+          // Smaller, bolder font for the header label
+          context.font = `900 ${fontSize * 0.75}px "JetBrains Mono", monospace`;
+          
+          // Create a more distinctive fill for the header
+          const labelGradient = context.createLinearGradient(0, lineY-20, canvas.width, lineY+20);
+          labelGradient.addColorStop(0, '#ffffff');
+          labelGradient.addColorStop(0.5, `#${hexColor}`);
+          labelGradient.addColorStop(1, '#ffffff');
+          context.fillStyle = labelGradient;
+          
+          // Draw the header label
+          context.strokeText(line, textX, lineY);
+          context.fillText(line, textX, lineY);
+          
+          // Restore the context for remaining lines
+          context.restore();
+        } else {
+          // Draw normal text (first stroke for outline, then fill)
+          context.strokeText(line, textX, lineY);
+          context.fillText(line, textX, lineY);
+        }
       });
       
       // Create texture from canvas (optimized settings)
