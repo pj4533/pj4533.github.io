@@ -313,6 +313,11 @@ export class TextParticle {
         // Reduce velocity once at safe height
         this.velocity.x *= 0.95;
         this.velocity.y *= 0.80; // Slow down vertical movement more
+        
+        // Add downward angle to velocity as text rises above the road
+        if (this.velocity.y > -0.05) { // Allow it to go negative for strong downward angle
+          this.velocity.y -= 0.002; // Very subtle downward angle
+        }
       }
       
       // Update position with directional movement
