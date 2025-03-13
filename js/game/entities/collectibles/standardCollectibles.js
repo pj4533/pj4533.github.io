@@ -1,10 +1,11 @@
 /**
  * Standard Collectibles - Creates standard collectible objects
  */
+import { createFactCollectible } from './factCollectibles.js';
 
 /**
  * Create a standard collectible of the specified type
- * @param {number} collectibleType - Type of collectible to create (0-3)
+ * @param {number} collectibleType - Type of collectible to create (0-4)
  * @param {number} itemColor - The color for the collectible
  * @returns {THREE.Object3D} - The created collectible object
  */
@@ -26,6 +27,10 @@ export function createStandardCollectible(collectibleType, itemColor) {
             
         case 3: // Holographic pyramid
             collectible = createHolographicPyramid(itemColor);
+            break;
+            
+        case 4: // Fact
+            collectible = createFactCollectible(itemColor);
             break;
     }
     

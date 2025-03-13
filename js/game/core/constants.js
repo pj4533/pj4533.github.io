@@ -6,6 +6,8 @@ export const GITHUB_COLOR = 0x6cc644;
 export const GITHUB_DARK_COLOR = 0x2ea44f;
 export const RESUME_COLOR = 0xff5700;
 export const RESUME_DARK_COLOR = 0xcc4400;
+export const FACT_COLOR = 0x3399ff;
+export const FACT_DARK_COLOR = 0x0066cc;
 
 // Player settings
 export const PLAYER_SIZE = 0.6;

@@ -197,6 +197,10 @@ export class TextParticle {
         else if (firstLine.includes('🔧')) dataTypeLabel = "TECHNICAL SKILLS";
         else if (firstLine.includes('🎓')) dataTypeLabel = "EDUCATION";
         else if (firstLine.includes('🏆')) dataTypeLabel = "AWARD";
+        // Check if this is a fact collectible
+        else if (this.text && this.text.startsWith("Fact\n")) {
+          dataTypeLabel = "FACT";
+        }
         // Special detection for GitHub repositories - any of these characteristics identify a repo:
         // 1. Name is all uppercase (GitHub repos are formatted this way in the game)
         // 2. Contains language tag in square brackets like [JavaScript]
@@ -215,7 +219,11 @@ export class TextParticle {
             (textLines.length > 1 && !firstLine.includes('«') && !firstLine.includes('»'))
           )
         ) {
-          dataTypeLabel = "GITHUB REPOSITORY";
+          // Only assign "GITHUB REPOSITORY" label if we have strong confidence this is a GitHub repo
+          // If we're uncertain, leave dataTypeLabel empty
+          if (firstLine.includes('[') && firstLine.includes(']') || firstLine.includes('★')) {
+            dataTypeLabel = "GITHUB REPOSITORY";
+          }
         }
         
         // Only add the label if it's not empty

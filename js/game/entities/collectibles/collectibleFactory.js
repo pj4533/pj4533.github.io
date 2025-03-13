@@ -9,11 +9,14 @@ import {
     GITHUB_COLOR, 
     GITHUB_DARK_COLOR, 
     RESUME_COLOR, 
-    RESUME_DARK_COLOR 
+    RESUME_DARK_COLOR,
+    FACT_COLOR,
+    FACT_DARK_COLOR
 } from '../../core/constants.js';
 import { getLastDisplayedItemId, setLastDisplayedItemId } from './collectibleManager.js';
 import { createStandardCollectible } from './standardCollectibles.js';
 import { createProfileCollectible } from './profileCollectibles.js';
+import { getRandomFact } from './factCollectibles.js';
 
 /**
  * Create a new collectible item in the game
@@ -36,8 +39,10 @@ export function createCollectible(currentLane, profileData, githubRepos, gitHubP
     // Always use profile items if we have them available (force balanced distribution)
     const isProfileItem = profileData && profileData.length > 0 && Math.random() < gitHubProfileItemChance;
     
-    // For standard collectibles, choose a random type
-    const collectibleType = Math.floor(Math.random() * 4);
+    // For standard collectibles, choose a random type (now includes facts as type 4)
+    // Give facts (type 4) a higher probability of appearing (30% chance)
+    const useFactCollectible = Math.random() < 0.3;
+    const collectibleType = useFactCollectible ? 4 : Math.floor(Math.random() * 4);
     
     let collectible;
     const colorIndex = Math.floor(Math.random() * NEON_COLORS.length);
@@ -158,6 +163,25 @@ export function createCollectible(currentLane, profileData, githubRepos, gitHubP
         
         // Create a standard collectible
         collectible = createStandardCollectible(collectibleType, itemColor);
+        
+        // If this is a fact collectible (type 4), add fact data
+        if (collectibleType === 4) {
+            collectibleUserData.dataSource = 'fact';
+            collectibleUserData.dataItem = getRandomFact();
+            // Use the fact color instead of the random neon color
+            collectible.children.forEach(child => {
+                if (child.material && child.material.color) {
+                    child.material.color.setHex(FACT_COLOR);
+                }
+            });
+            // Update light color if present
+            collectible.children.forEach(child => {
+                if (child instanceof THREE.PointLight) {
+                    child.color.setHex(FACT_COLOR);
+                }
+            });
+            console.log("Assigned Fact:", collectibleUserData.dataItem.description);
+        }
     }
     
     // Position the collectible
