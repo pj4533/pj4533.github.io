@@ -24,11 +24,17 @@ import { createProfileCollectible } from './profileCollectibles.js';
  * @returns {THREE.Object3D} - The created collectible object
  */
 export function createCollectible(currentLane, profileData, githubRepos, gitHubProfileItemChance) {
+    // Don't create any collectibles if we don't have data
+    if ((!profileData || profileData.length === 0) && (!githubRepos || githubRepos.length === 0)) {
+        console.log("No data available, skipping collectible creation");
+        return null;
+    }
+    
     const lane = Math.floor(Math.random() * 3);
     
     // Determine if this should be a GitHub profile collectible
     // Always use profile items if we have them available (force balanced distribution)
-    const isProfileItem = profileData.length > 0 && Math.random() < gitHubProfileItemChance;
+    const isProfileItem = profileData && profileData.length > 0 && Math.random() < gitHubProfileItemChance;
     
     // For standard collectibles, choose a random type
     const collectibleType = Math.floor(Math.random() * 4);

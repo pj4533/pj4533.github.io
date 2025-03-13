@@ -32,8 +32,8 @@ let musicToggleButton;
 export async function initGame() {
     console.log('Initializing game...');
     
-    // Initialize scene, camera, renderer, and environment
-    sceneManager.init();
+    // Initialize with minimum needed to start the visual experience
+    sceneManager.initMinimal();
     
     // Create player
     const player = initializePlayer(sceneManager.scene, gameState.currentLane);
@@ -71,27 +71,83 @@ export async function initGame() {
     // Flash the grid immediately when the page loads for emphasis
     setTimeout(() => sceneManager.flashGrid(), 500);
     
-    // Start with a single collectible
-    setTimeout(() => {
-        // Create it far enough away to give player time to prepare
-        const collectible = createCollectible(gameState.currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
-        addCollectible(collectible, sceneManager.scene);
-        
-        // Position the initial collectible at a comfortable distance
-        collectible.position.z = -30;
-        collectible.position.x = LANES[1]; // Center lane
-    }, 100);
+    // Set up GitHub data loading first, then start animation loop with data references
+    window._gitHubProfileItemChance = GITHUB_PROFILE_ITEM_CHANCE;
+    
+    // Start with empty arrays - we'll only create collectibles once we have real data
+    // This prevents showing error messages or placeholder data
+    
+    // Initialize with empty arrays
+    // We'll only start showing collectibles once we have real data
+    
+    // Start animation loop with the arrays that will be updated later
+    const animate = initAnimationLoop(sceneManager, player, githubRepos, profileData);
+    animate();
     
     // Set up a user interaction handler to start music
     setupMusicAutostart();
     
-    // Load GitHub data
-    window._gitHubProfileItemChance = GITHUB_PROFILE_ITEM_CHANCE;
-    await loadGitHubData();
-    
-    // Start animation loop
-    const animate = initAnimationLoop(sceneManager, player, githubRepos, profileData);
-    animate();
+    // Continue loading the rest of the scene assets after a short delay
+    // This prevents multiple pauses by scheduling heavy operations
+    setTimeout(() => {
+        // Load road objects and more complex scene elements
+        sceneManager.initRemainingAssets();
+        
+        // Start with a single collectible after GitHub data is loaded
+        setTimeout(async () => {
+            try {
+                // Load GitHub data
+                const { githubRepos: repos, profileData: profile } = await loadGitHubData();
+                
+                console.log("Loaded real GitHub data:", 
+                    repos ? repos.length : 0, "repos", 
+                    profile ? Object.keys(profile).length : 0, "profile items");
+                
+                // Make sure we have real data before clearing placeholders
+                if (repos && repos.length > 0 && profile) {
+                    // First, process the data directly
+                    const processedRepos = repos;
+                    const processedProfile = Array.isArray(profile) ? profile : processGitHubProfileData(profile);
+                    
+                    console.log("Processed profile data:", processedProfile.length, "items");
+                    console.log("Sample profile item:", processedProfile.length > 0 ? processedProfile[0].name : "none");
+                    
+                    // Only clear if we actually have real data to replace with
+                    if (processedRepos.length > 0 && processedProfile.length > 0) {
+                        // Clear fallback data completely
+                        githubRepos.splice(0, githubRepos.length);
+                        profileData.splice(0, profileData.length);
+                        
+                        // Add real data to the arrays
+                        githubRepos.push(...processedRepos);
+                        profileData.push(...processedProfile);
+                    }
+                    
+                    console.log("Updated arrays with real data:", 
+                        githubRepos.length, "repos", 
+                        profileData.length, "profile items");
+                }
+                
+                console.log(`Loaded ${githubRepos.length} repos and ${profileData.length} profile items`);
+            } catch (error) {
+                console.error("Error loading GitHub data:", error);
+            }
+            
+            // Create initial collectible only if we have data
+            const collectible = createCollectible(gameState.currentLane, profileData, githubRepos, window._gitHubProfileItemChance);
+            
+            // Only add the collectible if it was successfully created
+            if (collectible) {
+                addCollectible(collectible, sceneManager.scene);
+                
+                // Position the initial collectible at a comfortable distance
+                collectible.position.z = -30;
+                collectible.position.x = LANES[1]; // Center lane
+            } else {
+                console.log("Skipping initial collectible - no data available yet");
+            }
+        }, 1000);
+    }, 200);
     
     return {
         player,
@@ -186,27 +242,62 @@ async function loadGitHubData() {
             fetchGitHubProfileData()
         ]);
         
-        // Store the GitHub repos data
-        githubRepos = repos;
-        console.log('Loaded GitHub repos:', githubRepos.length);
-        
-        // Log each repo for debugging
-        if (githubRepos.length > 0) {
-            console.log('First few repos:', githubRepos.slice(0, 3).map(repo => 
-                `${repo.name} (${repo.language || 'No language'}) - ${repo.description || 'No description'}`
-            ));
+        // Process GitHub repos data - make sure we have real data
+        let processedRepos = repos || [];
+        if (processedRepos.length === 0) {
+            console.error('No GitHub repos were loaded, using error message');
+            processedRepos = [{
+                name: "Error Loading Data",
+                description: "Could not load GitHub repository data",
+                language: "Error",
+                color: 0xff0000
+            }];
         } else {
-            console.error('No GitHub repos were loaded!');
+            console.log('Loaded GitHub repos:', processedRepos.length);
+            console.log('First repo:', processedRepos[0].name);
         }
         
-        // Store the profile data
-        profileData = processGitHubProfileData(profile);
-        console.log('Loaded GitHub profile data items:', profileData.length);
+        // Process profile data - make sure we get an array back
+        let processedProfileData;
+        if (profile) {
+            processedProfileData = processGitHubProfileData(profile);
+            console.log('Processed profile items:', processedProfileData.length);
+            if (processedProfileData.length > 0) {
+                console.log('First profile item:', processedProfileData[0].name);
+            }
+        } else {
+            console.error('No profile data was loaded, using error message');
+            processedProfileData = [{
+                name: "Error Loading Data",
+                description: "Could not load profile data",
+                details: "Check console for more information",
+                type: "error",
+                color: 0xff0000
+            }];
+        }
         
-        return { githubRepos, profileData };
+        return { 
+            githubRepos: processedRepos, 
+            profileData: processedProfileData 
+        };
     } catch (error) {
         console.error('Error loading GitHub data:', error);
-        return { githubRepos: [], profileData: [] };
+        // Return clear error messages
+        return { 
+            githubRepos: [{
+                name: "Error Loading Data",
+                description: "Could not load GitHub repository data",
+                language: "Error", 
+                color: 0xff0000
+            }], 
+            profileData: [{
+                name: "Error Loading Data",
+                description: "Could not load profile data",
+                details: "Check console for more information",
+                type: "error",
+                color: 0xff0000
+            }]
+        };
     }
 }
 

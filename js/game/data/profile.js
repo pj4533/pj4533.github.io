@@ -10,8 +10,17 @@ import { GITHUB_COLOR, RESUME_COLOR } from '../core/constants.js';
  * @param {string} username - GitHub username to fetch profile data for
  * @returns {Promise<Object>} - Combined profile and resume data object
  */
+// Cache for profile data
+let profileDataCache = null;
+
 export async function fetchGitHubProfileData(username = 'pj4533') {
   try {
+    // Use cached data if available
+    if (profileDataCache) {
+      console.log('Using cached GitHub profile data');
+      return profileDataCache;
+    }
+    
     console.log('Fetching GitHub profile data...');
     
     // Use GitHub API to get profile data
@@ -24,8 +33,8 @@ export async function fetchGitHubProfileData(username = 'pj4533') {
     const profile = await response.json();
     console.log('Fetched GitHub profile data successfully');
     
-    // Also get additional data like languages and repos
-    const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?per_page=100&sort=updated`);
+    // Also get additional data like languages and repos - reduce count to speed up initial load
+    const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?per_page=20&sort=updated`);
     const repos = await reposResponse.json();
     
     // Get languages used across repositories
@@ -128,7 +137,10 @@ export async function fetchGitHubProfileData(username = 'pj4533') {
       resumeData
     };
     
-    console.log('Combined data with resume included:', combinedData);
+    console.log('Combined data with resume included');
+    
+    // Store in cache for future use
+    profileDataCache = combinedData;
     
     return combinedData;
   } catch (error) {

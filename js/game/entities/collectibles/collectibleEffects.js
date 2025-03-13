@@ -96,26 +96,56 @@ export function createCollectionEffect(x, y, z, showRepo, scene, explodingTexts,
                 }
             }
             
-            // If we couldn't find the data from the collectible, use resume data as fallback
+            // If we couldn't find the data from the collectible, pick a random item 
+            // but ensure it's different from the previous one
             if (!dataItem) {
-                // Prioritize resume data for fallback
-                const resumeItems = profileData ? profileData.filter(item => item.source === 'resume') : [];
-                if (resumeItems && resumeItems.length > 0) {
-                    // Get a random resume item as fallback
-                    const randomIndex = Math.floor(Math.random() * resumeItems.length);
-                    dataItem = resumeItems[randomIndex];
-                    dataSource = 'profile';
+                const lastId = getLastDisplayedItemId();
+                console.log("Last displayed item ID:", lastId);
+                
+                // Combine all available data for better randomization
+                let allItems = [];
+                
+                // Add GitHub repos
+                if (gitHubRepos && gitHubRepos.length > 0) {
+                    // Map items to include source
+                    const repoItems = gitHubRepos.map(repo => ({
+                        ...repo, 
+                        source: 'github'
+                    }));
+                    allItems = [...allItems, ...repoItems];
                 }
-                // Only fall back to GitHub data if no resume data is available
-                else if (profileData && profileData.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * profileData.length);
-                    dataItem = profileData[randomIndex];
-                    dataSource = 'profile';
-                } 
-                else if (gitHubRepos && gitHubRepos.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * gitHubRepos.length);
-                    dataItem = gitHubRepos[randomIndex];
-                    dataSource = 'github';
+                
+                // Add profile data
+                if (profileData && profileData.length > 0) {
+                    allItems = [...allItems, ...profileData];
+                }
+                
+                // Only proceed if we have items to choose from
+                if (allItems.length > 0) {
+                    // Filter out the last displayed item if possible
+                    let availableItems = allItems;
+                    
+                    if (lastId && allItems.length > 1) {
+                        availableItems = allItems.filter(item => 
+                            (item.id && item.id !== lastId) || 
+                            (!item.id && item.name !== lastId)
+                        );
+                    }
+                    
+                    // If filtering removed all items, revert to using all items
+                    if (availableItems.length === 0) {
+                        availableItems = allItems;
+                    }
+                    
+                    // Get a truly random item
+                    const randomIndex = Math.floor(Math.random() * availableItems.length);
+                    dataItem = availableItems[randomIndex];
+                    
+                    // Set the data source based on the item
+                    dataSource = dataItem.source === 'resume' || dataItem.source === 'profile' ? 
+                        'profile' : 'github';
+                    
+                    console.log("Selected random item:", dataItem.name, "Source:", dataSource);
                 }
                 
                 // Last resort - create a dummy item if nothing else works

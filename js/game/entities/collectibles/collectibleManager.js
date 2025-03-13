@@ -72,6 +72,15 @@ export function checkCollisions(player, scene, flashGrid, explodingTexts, gitHub
         lastRepoShownTime: 0
     };
     
+    // Debug log the available data
+    if (gitHubRepos && gitHubRepos.length > 0) {
+        console.log(`Available GitHub repos: ${gitHubRepos.length}`);
+    }
+    
+    if (profileData && profileData.length > 0) {
+        console.log(`Available profile items: ${profileData.length}`);
+    }
+    
     // Check collectible collisions
     for (let i = collectibles.length - 1; i >= 0; i--) {
         const collectible = collectibles[i];
@@ -88,6 +97,15 @@ export function checkCollisions(player, scene, flashGrid, explodingTexts, gitHub
         if (distance < PLAYER_SIZE + 0.7) {
             // Always show repos by forcing shouldShowRepo to true
             const shouldShowRepo = true;
+            
+            // Store this collectible's data for proper tracking
+            if (collectible.userData && collectible.userData.dataItem) {
+                // Reset last displayed item tracking to make sure we get fresh content
+                if (lastDisplayedItemId && lastDisplayedItemId === collectible.userData.dataItem.name) {
+                    // If showing the same item, force a reset 
+                    lastDisplayedItemId = null;
+                }
+            }
             
             // Create collection effect with repo display
             createCollectionEffect(

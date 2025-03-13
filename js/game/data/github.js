@@ -10,11 +10,20 @@ import { NEON_COLORS } from '../core/constants.js';
  * @param {string} username - GitHub username to fetch repositories for
  * @returns {Promise<Array>} - Array of processed repository objects
  */
+// Cache for GitHub data
+let githubReposCache = null;
+
 export async function fetchGitHubRepos(username = 'pj4533') {
   try {
-    // Get repos sorted by most recently updated
+    // Use cached data if available
+    if (githubReposCache) {
+      console.log('Using cached GitHub repos data:', githubReposCache.length);
+      return githubReposCache;
+    }
+    
+    // Get repos sorted by most recently updated with reduced per_page to speed up initial load
     // The 'updated' sort parameter sorts by the last time the repo was pushed to
-    const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&direction=desc&per_page=50`);
+    const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&direction=desc&per_page=20`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch repositories');
@@ -95,9 +104,9 @@ export async function fetchGitHubRepos(username = 'pj4533') {
     
     // Log the repos that will be shown
     console.log(`Showing ${filteredRepos.length} repos updated in the past ${filteredRepos.length === 0 ? '2 years' : 'year'}:`);
-    filteredRepos.forEach(repo => {
-      console.log(`- ${repo.name}: Last updated ${new Date(repo.pushed_at || repo.updated_at).toLocaleDateString()}`);
-    });
+    
+    // Store in cache for future use
+    githubReposCache = filteredRepos;
     
     return filteredRepos;
   } catch (error) {

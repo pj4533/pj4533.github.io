@@ -189,23 +189,31 @@ function createNewCollectibles(sceneManager, currentTime, lastCollectibleTime, g
             // Set chance to 0.5 for a balanced mix of GitHub and resume data
             const chanceToUse = 0.5;
             
-            // Create collectible with controlled type distribution
+            // Create collectible with controlled type distribution - only if we have data
             const collectible = createCollectible(gameState.currentLane, profileData, githubRepos, chanceToUse);
-            addCollectible(collectible, sceneManager.scene);
             
-            // Debug what type of collectible we're creating
-            console.log("Collectible type:", useGitHubRepo ? "GitHub Repo" : "Profile Data");
-            
-            // Position closer to make them appear more frequently
-            collectible.position.z = -30 - (Math.random() * 10);
-            
-            // Randomly select one of the three lanes
-            const randomLane = Math.floor(Math.random() * LANES.length);
-            collectible.position.x = LANES[randomLane];
-            console.log("Positioning collectible in lane", randomLane, "at x =", LANES[randomLane]);
-            
-            // Update the last collectible time
-            gameState.lastCollectibleTime = currentTime;
+            // Only continue if the collectible was successfully created
+            if (collectible) {
+                addCollectible(collectible, sceneManager.scene);
+                
+                // Debug what type of collectible we're creating
+                console.log("Collectible type:", useGitHubRepo ? "GitHub Repo" : "Profile Data");
+                
+                // Position closer to make them appear more frequently
+                collectible.position.z = -30 - (Math.random() * 10);
+                
+                // Randomly select one of the three lanes
+                const randomLane = Math.floor(Math.random() * LANES.length);
+                collectible.position.x = LANES[randomLane];
+                console.log("Positioning collectible in lane", randomLane, "at x =", LANES[randomLane]);
+                
+                // Update the last collectible time
+                gameState.lastCollectibleTime = currentTime;
+            } else {
+                console.log("Skipping collectible creation - no data available");
+                // Still update the time to prevent constant checks
+                gameState.lastCollectibleTime = currentTime;
+            }
         }
     } catch (err) {
         console.error('Error in creating collectibles:', err);
