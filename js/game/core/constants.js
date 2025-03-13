@@ -104,3 +104,10 @@ export const GRID_FLASH_COUNT = 8;
 // Audio settings
 export const DEFAULT_MUSIC_ENABLED = true;
 export const DEFAULT_MUSIC_VOLUME = 0.6;
+
+// Road objects settings
+export const ROAD_OBJECT_COUNT = 20; // Number of objects on each side
+export const ROAD_OBJECT_Z_SPACING = 35; // Distance between objects on Z-axis
+export const ROAD_OBJECT_X_OFFSET = 15; // Distance from center of track (much further away from road)
+export const ROAD_OBJECT_TYPES = ['palmTree', 'tree', 'cube']; // Types of objects (removed pyramids)
+export const ROAD_OBJECT_SCALE = 2.5; // Scale for roadside objects (reduced but still impressive)

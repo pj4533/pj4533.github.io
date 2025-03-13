@@ -34,7 +34,10 @@ import {
     LANES,
     
     // Animation timing
-    GRID_FLASH_INTERVAL, GRID_FLASH_COUNT
+    GRID_FLASH_INTERVAL, GRID_FLASH_COUNT,
+    
+    // Road objects settings
+    ROAD_OBJECT_COUNT, ROAD_OBJECT_Z_SPACING, ROAD_OBJECT_X_OFFSET, ROAD_OBJECT_TYPES, NEON_COLORS, ROAD_OBJECT_SCALE
 } from './constants.js';
 
 /**
@@ -49,6 +52,8 @@ export class SceneManager {
         this.sun = null;
         this.stars = [];
         this.sunGeometry = null;
+        this.roadObjects = []; // Store references to roadside objects
+        this.roadLines = []; // Store references to road grid lines
     }
 
     /**
@@ -63,6 +68,7 @@ export class SceneManager {
         this.createStarfield();
         this.createRetroCyberpunkSun();
         this.createTrack();
+        this.createRoadObjects(); // Add roadside objects
         
         // Handle window resizing
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
@@ -267,6 +273,23 @@ export class SceneManager {
         track.rotation.x = -Math.PI / 2;
         track.position.set(TRACK_POSITION.x, TRACK_POSITION.y, TRACK_POSITION.z);
         this.scene.add(track);
+        
+        // Add road grid lines for more synthwave aesthetic
+        this.roadLines = [];
+        for (let i = 0; i < 20; i++) {
+            // Create horizontal grid lines that run parallel to the track
+            const lineGeometry = new THREE.PlaneGeometry(TRACK_WIDTH, 0.05);
+            const lineMaterial = new THREE.MeshBasicMaterial({
+                color: i % 2 === 0 ? PRIMARY_GRID_COLOR1 : PRIMARY_GRID_COLOR2,
+                transparent: true,
+                opacity: 0.3
+            });
+            const line = new THREE.Mesh(lineGeometry, lineMaterial);
+            line.rotation.x = -Math.PI / 2;
+            line.position.set(0, 0.01, -50 - (i * 25)); // Position each line with spacing
+            this.scene.add(line);
+            this.roadLines.push(line); // Store reference for animation
+        }
         
         // Add 80s-style neon grid lines
         
@@ -483,6 +506,219 @@ export class SceneManager {
     }
     
     /**
+     * Create synthwave-style trees and objects on the sides of the track
+     */
+    createRoadObjects() {
+        // Create objects for both sides of the road
+        for (let side = -1; side <= 1; side += 2) { // -1 for left, 1 for right
+            for (let i = 0; i < ROAD_OBJECT_COUNT; i++) {
+                // Determine position
+                const z = -(i * ROAD_OBJECT_Z_SPACING) - 20; // Start a bit ahead of camera
+                
+                // Add random variation to x position but ensure it's FAR outside the track
+                // Track width is 10 (5 on each side) and barriers are at ±5.1
+                // Use negative side values to position objects away from the track
+                const xVariation = 5 + (Math.random() * 10); // 5-15 units of additional distance
+                const x = side * (ROAD_OBJECT_X_OFFSET + xVariation); // Left or right side with variation
+                
+                // Randomly pick an object type with 60% chance for palm trees (very synthwave)
+                const objectTypeRoll = Math.random();
+                let objectType;
+                
+                if (objectTypeRoll < 0.6) {
+                    // More palm trees - they're the most synthwave!
+                    objectType = 'palmTree';
+                } else if (objectTypeRoll < 0.8) {
+                    // Some regular trees
+                    objectType = 'tree';
+                } else {
+                    // Some cubes
+                    objectType = 'cube';
+                }
+                
+                // Randomly pick a color with more intense neon glow
+                const color = side === -1 ? PINK_LIGHT_COLOR : BLUE_LIGHT_COLOR;
+                
+                let object;
+                
+                switch (objectType) {
+                    case 'palmTree':
+                        // Create a synthwave palm tree
+                        const palmTrunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 5, 8);
+                        const palmTrunkMaterial = new THREE.MeshBasicMaterial({ 
+                            color: 0x222222,
+                            wireframe: true,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+                        const palmTrunk = new THREE.Mesh(palmTrunkGeometry, palmTrunkMaterial);
+                        palmTrunk.position.y = 2.5;
+                        
+                        // Create palm tree top with multiple palm fronds
+                        const palmTop = new THREE.Group();
+                        palmTop.position.y = 5;
+                        
+                        // Create multiple palm fronds in different directions
+                        for (let f = 0; f < 7; f++) {
+                            const angle = (f / 7) * Math.PI * 2;
+                            const bendAngle = Math.PI * 0.25; // How much the frond bends downward
+                            
+                            // Create a single frond as a curved shape
+                            const frondShape = new THREE.Shape();
+                            frondShape.moveTo(0, 0);
+                            frondShape.bezierCurveTo(1, 0.5, 3, 0, 4, -0.5);
+                            frondShape.lineTo(4, 0.5);
+                            frondShape.bezierCurveTo(3, 1, 1, 1.5, 0, 1);
+                            frondShape.lineTo(0, 0);
+                            
+                            // Extrude the shape to create a 3D frond
+                            const frondGeometry = new THREE.ExtrudeGeometry(frondShape, {
+                                steps: 1,
+                                depth: 0.1,
+                                bevelEnabled: false
+                            });
+                            
+                            const frondMaterial = new THREE.MeshBasicMaterial({
+                                color: color,
+                                wireframe: true,
+                                transparent: true,
+                                opacity: 0.9
+                            });
+                            
+                            const frond = new THREE.Mesh(frondGeometry, frondMaterial);
+                            frond.scale.set(0.8, 0.8, 0.8);
+                            
+                            // Position and rotate the frond
+                            frond.rotation.z = angle;
+                            frond.rotation.y = bendAngle;
+                            palmTop.add(frond);
+                        }
+                        
+                        // Group trunk and palm top
+                        object = new THREE.Group();
+                        object.add(palmTrunk);
+                        object.add(palmTop);
+                        
+                        // Add glow effects
+                        const palmGlow1 = new THREE.PointLight(color, 1.5, 8);
+                        palmGlow1.position.y = 5;
+                        object.add(palmGlow1);
+                        
+                        const palmGlow2 = new THREE.PointLight(color, 1.0, 6);
+                        palmGlow2.position.y = 3;
+                        object.add(palmGlow2);
+                        
+                        // Scale the palm tree
+                        object.scale.set(ROAD_OBJECT_SCALE, ROAD_OBJECT_SCALE, ROAD_OBJECT_SCALE);
+                        
+                        // Add random rotation for variety
+                        object.rotation.y = Math.random() * Math.PI * 2;
+                        break;
+                        
+                    case 'tree':
+                        // Create a synthwave pine tree
+                        const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.6, 4, 8);
+                        const trunkMaterial = new THREE.MeshBasicMaterial({ 
+                            color: 0x333333,
+                            wireframe: true,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+                        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                        
+                        // Create leaves as three stacked cones
+                        const leaves1Geometry = new THREE.ConeGeometry(2.5, 3, 8);
+                        const leaves1Material = new THREE.MeshBasicMaterial({
+                            color: color,
+                            wireframe: true,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+                        const leaves1 = new THREE.Mesh(leaves1Geometry, leaves1Material);
+                        leaves1.position.y = 3;
+                        
+                        const leaves2Geometry = new THREE.ConeGeometry(2, 2.5, 8);
+                        const leaves2Material = new THREE.MeshBasicMaterial({
+                            color: color === PINK_LIGHT_COLOR ? 0xff00cc : 0x00ccff,
+                            wireframe: true,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+                        const leaves2 = new THREE.Mesh(leaves2Geometry, leaves2Material);
+                        leaves2.position.y = 5;
+                        
+                        const leaves3Geometry = new THREE.ConeGeometry(1.5, 2, 8);
+                        const leaves3Material = new THREE.MeshBasicMaterial({
+                            color: color,
+                            wireframe: true,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+                        const leaves3 = new THREE.Mesh(leaves3Geometry, leaves3Material);
+                        leaves3.position.y = 7;
+                        
+                        // Group trunk and leaves
+                        object = new THREE.Group();
+                        object.add(trunk);
+                        object.add(leaves1);
+                        object.add(leaves2);
+                        object.add(leaves3);
+                        
+                        // Add glow effect using multiple PointLights
+                        const glow1 = new THREE.PointLight(color, 1.5, 8);
+                        glow1.position.y = 5;
+                        object.add(glow1);
+                        
+                        // Scale the tree
+                        object.scale.set(ROAD_OBJECT_SCALE, ROAD_OBJECT_SCALE, ROAD_OBJECT_SCALE);
+                        break;
+                        
+                    // Removed pyramid case - replaced with more palm trees and cubes
+                        
+                    case 'cube':
+                        // Create a synthwave cube
+                        const cubeGeometry = new THREE.BoxGeometry(2, 4, 2);
+                        const cubeMaterial = new THREE.MeshBasicMaterial({
+                            color: color,
+                            wireframe: true,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+                        object = new THREE.Mesh(cubeGeometry, cubeMaterial);
+                        
+                        // Add inner cube for depth
+                        const innerCubeGeometry = new THREE.BoxGeometry(1.6, 3.6, 1.6);
+                        const innerCubeMaterial = new THREE.MeshBasicMaterial({
+                            color: color === PINK_LIGHT_COLOR ? 0xff00cc : 0x00ccff,
+                            wireframe: true,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        const innerCube = new THREE.Mesh(innerCubeGeometry, innerCubeMaterial);
+                        object.add(innerCube);
+                        
+                        // Add glow effect
+                        const cubeGlow = new THREE.PointLight(color, 1.5, 8);
+                        cubeGlow.position.y = 1;
+                        object.add(cubeGlow);
+                        
+                        // Scale the cube
+                        object.scale.set(ROAD_OBJECT_SCALE, ROAD_OBJECT_SCALE, ROAD_OBJECT_SCALE);
+                        break;
+                }
+                
+                // Position the object with proper height
+                // Ensure y position doesn't let object overlap with the road
+                object.position.set(x, 0, z);
+                
+                // Add to scene and keep track of it
+                this.scene.add(object);
+                this.roadObjects.push(object);
+            }
+        }
+    }
+
+    /**
      * Update animations for environment elements
      * @param {boolean} gameStarted - Whether the game has started
      * @param {number} speed - The current game speed
@@ -534,6 +770,76 @@ export class SceneManager {
         // Move the retro sun
         if (this.sun) {
             this.sun.rotation.z += SUN_ROTATION_SPEED;
+        }
+        
+        // Animate road lines
+        for (let i = 0; i < this.roadLines.length; i++) {
+            const line = this.roadLines[i];
+            if (line) {
+                // Move lines toward the camera
+                line.position.z += gameStarted ? speed * 1.5 : 0.2;
+                
+                // Reset position when lines pass the camera
+                if (line.position.z > 15) {
+                    // Reset to far distance
+                    line.position.z = -500 + (i * 3); // Stagger the reset positions
+                }
+            }
+        }
+        
+        // Animate road objects
+        for (let i = 0; i < this.roadObjects.length; i++) {
+            const object = this.roadObjects[i];
+            if (object) {
+                // Move objects toward the camera at higher speed to create a more dramatic effect
+                object.position.z += gameStarted ? speed * 2.0 : 0.3;
+                
+                // Apply rotation effects for more visual interest
+                object.rotation.y += 0.01;
+                
+                // Animate lights by pulsing their intensity slightly
+                if (object.children) {
+                    object.children.forEach(child => {
+                        if (child instanceof THREE.PointLight) {
+                            // Create pulsing effect on lights
+                            child.intensity = 1.5 + Math.sin(Date.now() * 0.003) * 0.8;
+                            
+                            // Randomize light color slightly for each object to create variation
+                            if (Math.random() < 0.01) {
+                                if (child.color.getHex() === PINK_LIGHT_COLOR) {
+                                    child.color.setHex(0xff00cc);
+                                } else if (child.color.getHex() === BLUE_LIGHT_COLOR) {
+                                    child.color.setHex(0x00ccff);
+                                } else {
+                                    child.color.setHex(child.color.getHex() === PINK_LIGHT_COLOR ? BLUE_LIGHT_COLOR : PINK_LIGHT_COLOR);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Reset position when objects pass the camera
+                if (object.position.z > 15) {
+                    // Reset to far distance with variation
+                    object.position.z = -600 + Math.random() * 100;
+                    
+                    // Calculate proper side (left or right) based on the object's current x-position
+                    const side = object.position.x < 0 ? -1 : 1;
+                    
+                    // Add random variation to x position but ensure it's FAR outside the track
+                    // Track is 10 units wide (±5) and barriers are at ±5.1
+                    const xVariation = 5 + (Math.random() * 10); // 5-15 units additional distance from road
+                    object.position.x = side * (ROAD_OBJECT_X_OFFSET + xVariation);
+                    
+                    // Randomize object height for variety, but keep them grounded
+                    object.position.y = (Math.random() * 0.5);
+                    
+                    // Randomize object scale slightly for more variety but keep reasonable
+                    const scaleVariation = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2 range
+                    const baseScale = ROAD_OBJECT_SCALE * scaleVariation;
+                    object.scale.set(baseScale, baseScale, baseScale);
+                }
+            }
         }
     }
 }
