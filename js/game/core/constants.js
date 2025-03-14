@@ -104,7 +104,7 @@ export const GRID_FLASH_INTERVAL = 120;
 export const GRID_FLASH_COUNT = 8;
 
 // Audio settings
-export const DEFAULT_MUSIC_ENABLED = true;
+export const DEFAULT_MUSIC_ENABLED = false;
 export const DEFAULT_MUSIC_VOLUME = 0.6;
 
 // Road objects settings

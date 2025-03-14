@@ -8,7 +8,7 @@ let audioContext;
 let masterGainNode;
 
 // Music state
-let musicEnabled = true;
+let musicEnabled = false;
 let isPlaying = false;
 let currentPattern = 0;
 let patternTimeoutId;

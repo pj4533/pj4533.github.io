@@ -61,18 +61,12 @@ export function loadHighScore() {
 }
 
 /**
- * Loads music preferences from localStorage
+ * Loads music preferences from localStorage - always returns false to keep music off by default
  */
 export function loadMusicPreferences() {
-    try {
-        if (localStorage.getItem('neonWaveMusicEnabled') !== null) {
-            state.musicEnabled = localStorage.getItem('neonWaveMusicEnabled') === 'true';
-            return state.musicEnabled;
-        }
-    } catch (err) {
-        console.error('Error loading music preferences:', err);
-    }
-    return state.musicEnabled;
+    // Always initialize with music disabled, regardless of localStorage
+    state.musicEnabled = false;
+    return false;
 }
 
 /**

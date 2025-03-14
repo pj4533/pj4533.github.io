@@ -161,16 +161,13 @@ export async function initGame() {
  * Set up handlers to start music after user interaction (for browser autoplay policy)
  */
 function setupMusicAutostart() {
-    // Set up a user interaction handler to start music
-    // This handles browsers' autoplay policy restrictions
+    // Set up a user interaction handler to unlock audio, but not start music
+    // Music will only start when the user clicks the music button
     const startMusicOnInteraction = () => {
         // Unlock audio context first (important for iOS)
         unlockAudio();
         
-        if (gameState.musicEnabled) {
-            console.log("Starting music after user interaction");
-            startMusic();
-        }
+        // Music is always disabled by default, so we don't start it automatically
         
         // Remove the event listeners after first interaction
         document.removeEventListener('click', startMusicOnInteraction);
@@ -183,13 +180,8 @@ function setupMusicAutostart() {
     document.addEventListener('keydown', startMusicOnInteraction);
     window.addEventListener('touchstart', startMusicOnInteraction);
     
-    // Also attempt to start music with timeout, but this may not work
-    // due to browser autoplay policies
-    if (gameState.musicEnabled) {
-        setTimeout(() => {
-            startMusic();
-        }, 1000);
-    }
+    // Do not attempt to start music automatically - always require user action
+    // Music is disabled by default
 }
 
 /**
