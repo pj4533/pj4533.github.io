@@ -10,6 +10,14 @@ let lastOrientationTime = 0;
 const ORIENTATION_THROTTLE = 200; // ms between orientation updates to prevent over-sensitivity
 let isDeviceOrientationSupported = false;
 
+// Variables for swipe detection
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTime = 0;
+const SWIPE_THRESHOLD = 50;        // Minimum pixels to register as swipe
+const SWIPE_RESTRAINT = 100;       // Maximum perpendicular movement
+const SWIPE_ALLOWED_TIME = 300;    // Maximum time for swipe (ms)
+
 // Simple check for mobile device
 const isMobileDevice = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
@@ -76,6 +84,12 @@ export function initInputHandling(gameState, player, refreshGame, updateMusicTog
             showTiltInstructions();
         }
     }
+
+    // Add touch event listeners for swipe gestures
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', (event) => {
+        handleTouchEnd(event, gameState, player);
+    }, { passive: true });
 }
 
 /**
@@ -180,6 +194,50 @@ function handleDeviceOrientation(event, gameState, player) {
     
     // Create a synthetic keyboard event to reuse existing logic
     const syntheticEvent = { key, preventDefault: () => {} };
+    gameState.currentLane = handlePlayerMovement(syntheticEvent, player, gameState.currentLane);
+}
+
+/**
+ * Handle touch start event for swipe detection
+ * @param {TouchEvent} event - The touch event
+ */
+function handleTouchStart(event) {
+    const touch = event.changedTouches[0];
+    touchStartX = touch.pageX;
+    touchStartY = touch.pageY;
+    touchStartTime = Date.now();
+}
+
+/**
+ * Handle touch end event for swipe detection
+ * @param {TouchEvent} event - The touch event
+ * @param {Object} gameState - The game state
+ * @param {Object} player - The player object
+ */
+function handleTouchEnd(event, gameState, player) {
+    // Only handle swipes if game is active
+    if (!gameState.gameStarted) return;
+
+    const touch = event.changedTouches[0];
+    const touchEndX = touch.pageX;
+    const touchEndY = touch.pageY;
+    const elapsedTime = Date.now() - touchStartTime;
+
+    // Check if swipe was fast enough
+    if (elapsedTime > SWIPE_ALLOWED_TIME) return;
+
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+
+    // Check if horizontal movement exceeds threshold
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+
+    // Check if movement was mostly horizontal (not diagonal)
+    if (Math.abs(deltaY) > SWIPE_RESTRAINT) return;
+
+    // Determine direction and move player
+    const direction = deltaX < 0 ? 'ArrowLeft' : 'ArrowRight';
+    const syntheticEvent = { key: direction, preventDefault: () => {} };
     gameState.currentLane = handlePlayerMovement(syntheticEvent, player, gameState.currentLane);
 }
 
