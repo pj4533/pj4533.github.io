@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building a Rain Sound Synthesizer with Claude Code</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-swift.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+    <style>
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .timeline-line {
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        }
+        .phase-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        .tool-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .stat-card {
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.1) 0%, rgba(245, 87, 108, 0.1) 100%);
+            border: 1px solid rgba(240, 147, 251, 0.2);
+        }
+        pre[class*="language-"] {
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        code[class*="language-"] {
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <!-- Hero Section -->
+    <header class="relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-900/50 via-gray-900 to-pink-900/30"></div>
+        <div class="relative max-w-6xl mx-auto px-6 py-20">
+            <div class="text-center">
+                <p class="text-purple-400 font-mono text-sm mb-4">A Claude Code Case Study</p>
+                <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                    <span class="gradient-text">From Zero to Rain</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-8">
+                    How a complete macOS audio synthesis application was built in
+                    <span class="text-purple-400 font-bold">13 minutes</span> using Claude Code's
+                    planning and autonomous coding capabilities.
+                </p>
+                <div class="flex flex-wrap justify-center gap-4 text-sm">
+                    <span class="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full border border-purple-500/30">SwiftUI</span>
+                    <span class="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full border border-purple-500/30">AVFoundation</span>
+                    <span class="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full border border-purple-500/30">Audio Synthesis</span>
+                    <span class="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full border border-purple-500/30">Real-time DSP</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats Section -->
+    <section class="max-w-6xl mx-auto px-6 py-12">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="stat-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-bold text-pink-400">13</div>
+                <div class="text-gray-400 text-sm">Minutes Total</div>
+            </div>
+            <div class="stat-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-bold text-pink-400">12</div>
+                <div class="text-gray-400 text-sm">Files Created</div>
+            </div>
+            <div class="stat-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-bold text-pink-400">~800</div>
+                <div class="text-gray-400 text-sm">Lines of Code</div>
+            </div>
+            <div class="stat-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-bold text-pink-400">1</div>
+                <div class="text-gray-400 text-sm">Human Prompt</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Introduction -->
+    <section class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-3xl font-bold mb-6">What You'll Learn</h2>
+        <p class="text-gray-300 text-lg leading-relaxed mb-6">
+            This page documents a real coding session where Claude Code built a complete macOS application
+            from a single detailed prompt. The app, called <strong class="text-purple-400">Sigh</strong>,
+            is a rain sound synthesizer that procedurally generates realistic rain sounds using digital
+            signal processing techniques.
+        </p>
+        <p class="text-gray-300 text-lg leading-relaxed mb-6">
+            You'll see exactly how Claude Code's <strong>Plan Mode</strong> works, what tools it uses,
+            and how it autonomously writes, debugs, and fixes code. This is a tutorial for anyone who
+            wants to understand how to leverage Claude Code effectively for complex software projects.
+        </p>
+        <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+            <h3 class="text-xl font-semibold mb-3 text-purple-400">Key Takeaways</h3>
+            <ul class="space-y-2 text-gray-300">
+                <li class="flex items-start gap-3">
+                    <span class="text-green-400 mt-1">&#10003;</span>
+                    <span><strong>Plan Mode</strong> allows Claude to research and design before coding</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-400 mt-1">&#10003;</span>
+                    <span><strong>Sub-agents</strong> handle specialized tasks like exploration and architecture</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-400 mt-1">&#10003;</span>
+                    <span><strong>Todo tracking</strong> keeps the work organized and visible</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-400 mt-1">&#10003;</span>
+                    <span><strong>Self-debugging</strong> means Claude fixes its own compilation errors</span>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- The Prompt -->
+    <section class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-3xl font-bold mb-6">The Single Prompt</h2>
+        <p class="text-gray-300 mb-6">
+            Everything started with this one detailed prompt. Notice how it specifies the technical
+            requirements clearly but leaves the implementation details to Claude:
+        </p>
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-sm font-bold">U</div>
+                <span class="text-gray-400 font-mono text-sm">14:47:34 UTC</span>
+            </div>
+            <div class="text-gray-200 space-y-4">
+                <p>Create a macOS app written in Swift, using SwiftUI and AVFoundation, that synthesizes rain sounds.</p>
+                <p>The audio engine should manage a number of raindrops. The raindrops should be created with some minor randomization of timing but the average rate should be controllable using a slider in the user-interface so that average rates between 20 per minute and 4000 per minute are possible.</p>
+                <p>Each raindrop should be synthesised using AVAudioSourceNode and the generation should involve a separate "impact" sound, followed by a small delay, followed by an exponentially decaying "bubble" oscillation. The user interface should include sliders to adjust the impact amplitude, the delay duration, the bubble amplitude, the bubble frequency and the bubble decay rate. As with the timing, each of these parameters should have minor randomisation so the drops do not all sound mechanically identical. As the sliders are adjusted, a SwiftUI Chart should show a sample waveform for the raindrop based on the current settings.</p>
+                <p>To fill out the overall "rain" soundscape, the audio engine should also implement pink, brown and white noise generators whose amplitude can also be controlled via sliders in the user interface.</p>
+                <p>I used Xcode to create the template project here, so it should build and run properly. But it's just the basic from Xcode, so use that as the basis. Don't bother writing any tests though. Right now we want to focus just on the functionality.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Timeline -->
+    <section class="max-w-6xl mx-auto px-6 py-12">
+        <h2 class="text-3xl font-bold mb-2 text-center">The Complete Timeline</h2>
+        <p class="text-gray-400 text-center mb-12">Every action Claude took, from start to finish</p>
+
+        <div class="relative">
+            <!-- Timeline line -->
+            <div class="absolute left-1/2 transform -translate-x-1/2 w-1 h-full timeline-line rounded-full hidden md:block"></div>
+
+            <!-- Phase 1: Exploration -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <span class="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full text-sm font-semibold">
+                        Phase 1: Exploration
+                    </span>
+                    <p class="text-gray-500 text-sm mt-2">14:47:34 - 14:48:31 (57 seconds)</p>
+                </div>
+
+                <div class="phase-card rounded-xl p-6 md:w-2/3 mx-auto">
+                    <h3 class="text-xl font-semibold mb-4">Understanding the Codebase</h3>
+                    <p class="text-gray-300 mb-4">
+                        Claude immediately recognized this was a complex task requiring planning. It entered
+                        <strong class="text-purple-400">Plan Mode</strong> and launched an <strong>Explore agent</strong>
+                        to understand the existing project structure.
+                    </p>
+
+                    <div class="bg-gray-800/50 rounded-lg p-4 mb-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="tool-badge text-white text-xs px-2 py-1 rounded">Task Tool</span>
+                            <span class="text-gray-400 text-sm">Launching Explore Agent</span>
+                        </div>
+                        <p class="text-gray-400 text-sm font-mono">
+                            "Explore the Sigh macOS app project structure. I need to understand what files exist..."
+                        </p>
+                    </div>
+
+                    <h4 class="font-semibold text-purple-400 mb-2">What the Explore Agent Found:</h4>
+                    <ul class="text-gray-300 space-y-1 text-sm">
+                        <li>&#8226; Fresh Xcode 16 project with basic SwiftUI template</li>
+                        <li>&#8226; macOS 26.0 deployment target</li>
+                        <li>&#8226; App Sandbox enabled (security)</li>
+                        <li>&#8226; No existing audio code - completely blank slate</li>
+                        <li>&#8226; Bundle ID: com.saygoodnight.Sigh</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 2: Architecture Design -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <span class="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full text-sm font-semibold">
+                        Phase 2: Architecture Design
+                    </span>
+                    <p class="text-gray-500 text-sm mt-2">14:48:31 - 14:51:54 (3 minutes 23 seconds)</p>
+                </div>
+
+                <div class="phase-card rounded-xl p-6 md:w-2/3 mx-auto">
+                    <h3 class="text-xl font-semibold mb-4">Designing the Solution</h3>
+                    <p class="text-gray-300 mb-4">
+                        With the codebase understood, Claude launched a <strong>Plan agent</strong> to design
+                        a comprehensive architecture. This is where the real thinking happened.
+                    </p>
+
+                    <div class="bg-gray-800/50 rounded-lg p-4 mb-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="tool-badge text-white text-xs px-2 py-1 rounded">Task Tool</span>
+                            <span class="text-gray-400 text-sm">Launching Plan Agent</span>
+                        </div>
+                        <p class="text-gray-400 text-sm font-mono">
+                            "Design a comprehensive implementation plan for a macOS rain sound synthesizer..."
+                        </p>
+                    </div>
+
+                    <h4 class="font-semibold text-purple-400 mb-3">The Plan Agent Designed:</h4>
+                    <div class="grid md:grid-cols-2 gap-4 text-sm">
+                        <div class="bg-gray-800/30 rounded-lg p-3">
+                            <h5 class="font-semibold text-gray-200 mb-2">File Structure</h5>
+                            <pre class="text-gray-400 text-xs"><code>Sigh/
+├── Audio/
+│   ├── AudioEngine.swift
+│   ├── RaindropSynthesizer.swift
+│   ├── RaindropScheduler.swift
+│   ├── NoiseGenerator.swift
+│   └── AudioConstants.swift
+├── Models/
+│   └── RaindropParameters.swift
+├── ViewModels/
+│   └── SynthesizerViewModel.swift
+└── Views/
+    ├── RaindropControlsView.swift
+    ├── NoiseControlsView.swift
+    ├── WaveformChartView.swift
+    └── LabeledSlider.swift</code></pre>
+                        </div>
+                        <div class="bg-gray-800/30 rounded-lg p-3">
+                            <h5 class="font-semibold text-gray-200 mb-2">Key Decisions</h5>
+                            <ul class="text-gray-400 space-y-1">
+                                <li>&#8226; Pre-allocated pool of 64 raindrops</li>
+                                <li>&#8226; Voss-McCartney algorithm for pink noise</li>
+                                <li>&#8226; Atomic operations for thread safety</li>
+                                <li>&#8226; Observable pattern for UI binding</li>
+                                <li>&#8226; XORShift for fast random generation</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-4 bg-gray-800/30 rounded-lg">
+                        <h5 class="font-semibold text-gray-200 mb-2">The Raindrop Synthesis Formula</h5>
+                        <pre class="text-gray-300 text-sm"><code>raindrop(t) = impact(t) + bubble(t - delay)
+
+impact(t) = A_impact * e^(-t/tau_impact) * noise(t)
+bubble(t) = A_bubble * e^(-t/tau_bubble) * sin(2*pi*f_bubble*t)</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 3: Plan Approval -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <span class="bg-green-500/20 text-green-300 px-4 py-2 rounded-full text-sm font-semibold">
+                        Plan Approval
+                    </span>
+                    <p class="text-gray-500 text-sm mt-2">14:51:54 - 14:52:53 (59 seconds)</p>
+                </div>
+
+                <div class="phase-card rounded-xl p-6 md:w-2/3 mx-auto">
+                    <h3 class="text-xl font-semibold mb-4">Exiting Plan Mode</h3>
+                    <p class="text-gray-300 mb-4">
+                        Claude wrote the plan to a file and called <code class="bg-gray-700 px-2 py-1 rounded text-purple-300">ExitPlanMode</code>.
+                        This is the checkpoint where the human (me) reviewed and approved the plan with a single click.
+                    </p>
+
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="tool-badge text-white text-xs px-2 py-1 rounded">Write Tool</span>
+                            <span class="text-gray-400 text-sm">Creating plan file</span>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Written to: <code class="text-purple-300">~/.claude/plans/delegated-jingling-haven.md</code>
+                        </p>
+                    </div>
+
+                    <div class="mt-4 p-4 bg-green-900/20 border border-green-700/30 rounded-lg">
+                        <p class="text-green-300 text-sm">
+                            <strong>Why Plan Mode Matters:</strong> By planning first, Claude ensures it understands
+                            the full scope before writing any code. The human gets to review the approach and can
+                            suggest changes before any implementation work begins.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 4: Implementation -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <span class="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-full text-sm font-semibold">
+                        Phase 3: Implementation
+                    </span>
+                    <p class="text-gray-500 text-sm mt-2">14:52:53 - 14:58:18 (5 minutes 25 seconds)</p>
+                </div>
+
+                <div class="phase-card rounded-xl p-6 md:w-2/3 mx-auto">
+                    <h3 class="text-xl font-semibold mb-4">Writing the Code</h3>
+                    <p class="text-gray-300 mb-4">
+                        With the plan approved, Claude began the autonomous implementation. It created a
+                        <strong class="text-purple-400">todo list</strong> with 13 items and systematically
+                        worked through each one.
+                    </p>
+
+                    <div class="bg-gray-800/50 rounded-lg p-4 mb-4">
+                        <h4 class="font-semibold text-gray-200 mb-3">Todo List Progress</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Audio/AudioConstants.swift</span>
+                                <span class="text-gray-500">14:53:40</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Models/RaindropParameters.swift</span>
+                                <span class="text-gray-500">14:54:00</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Audio/RaindropSynthesizer.swift</span>
+                                <span class="text-gray-500">14:54:37</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Audio/RaindropScheduler.swift</span>
+                                <span class="text-gray-500">14:55:09</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Audio/NoiseGenerator.swift</span>
+                                <span class="text-gray-500">14:55:43</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Audio/AudioEngine.swift</span>
+                                <span class="text-gray-500">14:56:07</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create ViewModels/SynthesizerViewModel.swift</span>
+                                <span class="text-gray-500">14:56:38</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Views/LabeledSlider.swift</span>
+                                <span class="text-gray-500">14:56:58</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Views/WaveformChartView.swift</span>
+                                <span class="text-gray-500">14:57:16</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Views/RaindropControlsView.swift</span>
+                                <span class="text-gray-500">14:57:36</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Create Views/NoiseControlsView.swift</span>
+                                <span class="text-gray-500">14:57:53</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-green-400">&#10003;</span>
+                                <span class="text-gray-300">Update ContentView.swift</span>
+                                <span class="text-gray-500">14:58:18</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="font-semibold text-purple-400 mb-3">Sample Code: Raindrop Synthesis</h4>
+                    <pre><code class="language-swift">func generateSample() -> Float {
+    var output: Float = 0.0
+
+    // Impact phase - exponentially decaying noise
+    let impactDurationSamples: UInt32 = 50
+    if sampleIndex < delaySamples + impactDurationSamples {
+        noiseState ^= noiseState << 13
+        noiseState ^= noiseState >> 17
+        noiseState ^= noiseState << 5
+        let noise = Float(Int32(bitPattern: noiseState)) / Float(Int32.max)
+        output += impactAmplitude * currentImpactEnvelope * noise
+        currentImpactEnvelope *= impactDecayRate
+    }
+
+    // Bubble phase - exponentially decaying sine wave
+    if sampleIndex >= delaySamples {
+        output += bubbleAmplitude * currentBubbleEnvelope * sin(bubblePhase)
+        bubblePhase += bubblePhaseIncrement
+        if bubblePhase > 2.0 * .pi {
+            bubblePhase -= 2.0 * .pi
+        }
+        currentBubbleEnvelope *= bubbleDecayRate
+    }
+
+    sampleIndex += 1
+    return output
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- Phase 5: Build & Debug -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <span class="bg-yellow-500/20 text-yellow-300 px-4 py-2 rounded-full text-sm font-semibold">
+                        Phase 4: Build & Debug
+                    </span>
+                    <p class="text-gray-500 text-sm mt-2">14:58:18 - 14:59:47 (1 minute 29 seconds)</p>
+                </div>
+
+                <div class="phase-card rounded-xl p-6 md:w-2/3 mx-auto">
+                    <h3 class="text-xl font-semibold mb-4">Self-Debugging</h3>
+                    <p class="text-gray-300 mb-4">
+                        The first build attempt failed with two errors. Claude identified the issues,
+                        fixed them, and rebuilt successfully. This is <strong class="text-yellow-400">autonomous debugging</strong> in action.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-red-900/20 border border-red-700/30 rounded-lg p-4">
+                            <h5 class="font-semibold text-red-400 mb-2">Error 1: Array Swap Access</h5>
+                            <pre class="text-gray-400 text-sm"><code>error: overlapping accesses to 'dropPool',
+but modification requires exclusive access</code></pre>
+                            <div class="mt-2 text-sm text-gray-300">
+                                <strong>Fix:</strong> Changed <code class="bg-gray-700 px-1 rounded">swap(&dropPool[i], &dropPool[j])</code>
+                                to <code class="bg-gray-700 px-1 rounded">dropPool.swapAt(i, j)</code>
+                            </div>
+                        </div>
+
+                        <div class="bg-red-900/20 border border-red-700/30 rounded-lg p-4">
+                            <h5 class="font-semibold text-red-400 mb-2">Error 2: Actor Isolation</h5>
+                            <pre class="text-gray-400 text-sm"><code>error: main actor-isolated static method
+cannot be called from outside of the actor</code></pre>
+                            <div class="mt-2 text-sm text-gray-300">
+                                <strong>Fix:</strong> Added <code class="bg-gray-700 px-1 rounded">nonisolated</code>
+                                keyword to static helper methods
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-4 bg-green-900/20 border border-green-700/30 rounded-lg">
+                        <p class="text-green-300 font-semibold mb-2">BUILD SUCCEEDED</p>
+                        <p class="text-gray-300 text-sm">
+                            At 14:59:47, the app compiled successfully. Claude marked the final todo as complete
+                            and provided a summary of the implementation.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tools Used -->
+    <section class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-3xl font-bold mb-8 text-center">Tools Claude Used</h2>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="tool-badge text-white text-sm px-3 py-1 rounded">Task</span>
+                    <span class="text-gray-300 font-semibold">Sub-Agents</span>
+                </div>
+                <p class="text-gray-400 text-sm">
+                    Launches specialized agents for complex work. Used <strong>Explore</strong> agent
+                    to analyze the codebase and <strong>Plan</strong> agent to design the architecture.
+                </p>
+            </div>
+
+            <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="tool-badge text-white text-sm px-3 py-1 rounded">Write</span>
+                    <span class="text-gray-300 font-semibold">File Creation</span>
+                </div>
+                <p class="text-gray-400 text-sm">
+                    Creates new files with specified content. Used 12 times to create all the Swift
+                    source files and the implementation plan.
+                </p>
+            </div>
+
+            <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="tool-badge text-white text-sm px-3 py-1 rounded">TodoWrite</span>
+                    <span class="text-gray-300 font-semibold">Progress Tracking</span>
+                </div>
+                <p class="text-gray-400 text-sm">
+                    Maintains a visible todo list that updates in real-time. Shows what Claude is
+                    working on and what's completed.
+                </p>
+            </div>
+
+            <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="tool-badge text-white text-sm px-3 py-1 rounded">Bash</span>
+                    <span class="text-gray-300 font-semibold">Commands</span>
+                </div>
+                <p class="text-gray-400 text-sm">
+                    Executes shell commands. Used to create directories, run <code class="bg-gray-700 px-1 rounded">xcodebuild</code>,
+                    and check for errors.
+                </p>
+            </div>
+
+            <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="tool-badge text-white text-sm px-3 py-1 rounded">Read</span>
+                    <span class="text-gray-300 font-semibold">File Reading</span>
+                </div>
+                <p class="text-gray-400 text-sm">
+                    Reads file contents for analysis. Used to examine existing code and understand
+                    what needed to be modified.
+                </p>
+            </div>
+
+            <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="tool-badge text-white text-sm px-3 py-1 rounded">Edit</span>
+                    <span class="text-gray-300 font-semibold">Code Fixes</span>
+                </div>
+                <p class="text-gray-400 text-sm">
+                    Makes targeted edits to existing files. Used twice to fix the compilation errors
+                    during the debugging phase.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why This Matters -->
+    <section class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-3xl font-bold mb-6">Why This Approach Works</h2>
+
+        <div class="space-y-6">
+            <div class="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-700/30 rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-3 text-purple-300">1. Plan Before You Code</h3>
+                <p class="text-gray-300">
+                    By entering Plan Mode, Claude researches the codebase and designs an architecture
+                    before writing any code. This prevents false starts and ensures the solution is
+                    well-structured from the beginning. The human gets to approve the approach before
+                    any implementation work begins.
+                </p>
+            </div>
+
+            <div class="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-700/30 rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-3 text-purple-300">2. Specialized Agents for Specialized Tasks</h3>
+                <p class="text-gray-300">
+                    The Explore agent is optimized for quickly understanding codebases. The Plan agent
+                    is focused on architecture design. By using specialized sub-agents, Claude can
+                    tackle complex tasks more effectively than trying to do everything in one context.
+                </p>
+            </div>
+
+            <div class="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-700/30 rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-3 text-purple-300">3. Visible Progress with Todos</h3>
+                <p class="text-gray-300">
+                    The todo list shows exactly what Claude is working on at any moment. This provides
+                    transparency and helps the human understand the progress. It also keeps Claude
+                    organized and ensures nothing is forgotten.
+                </p>
+            </div>
+
+            <div class="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-700/30 rounded-xl p-6">
+                <h3 class="text-xl font-semibold mb-3 text-purple-300">4. Build Early, Fix Fast</h3>
+                <p class="text-gray-300">
+                    Claude doesn't just write code and hope it works. It runs the build, reads the
+                    error messages, and fixes issues. This iterative debugging process means the
+                    final result actually compiles and runs.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- The Result -->
+    <section class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-3xl font-bold mb-6">The Final Application</h2>
+
+        <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+            <h3 class="text-xl font-semibold mb-4 text-purple-400">Sigh - Rain Sound Synthesizer</h3>
+            <p class="text-gray-300 mb-6">
+                A fully functional macOS application that generates realistic rain sounds through
+                procedural audio synthesis. Features include:
+            </p>
+
+            <div class="grid md:grid-cols-2 gap-4 mb-6">
+                <ul class="text-gray-300 space-y-2">
+                    <li class="flex items-start gap-2">
+                        <span class="text-purple-400">&#9679;</span>
+                        Raindrop rate: 20-4000 drops/minute
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-purple-400">&#9679;</span>
+                        Impact + delay + bubble synthesis
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-purple-400">&#9679;</span>
+                        Parameter randomization (+/- 15%)
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-purple-400">&#9679;</span>
+                        Real-time waveform preview
+                    </li>
+                </ul>
+                <ul class="text-gray-300 space-y-2">
+                    <li class="flex items-start gap-2">
+                        <span class="text-purple-400">&#9679;</span>
+                        Pink noise (Voss-McCartney)
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-purple-400">&#9679;</span>
+                        Brown noise (integrated white)
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-purple-400">&#9679;</span>
+                        White noise (XORShift)
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-purple-400">&#9679;</span>
+                        Play/pause control
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-gray-900 rounded-lg p-4">
+                <h4 class="font-semibold text-gray-200 mb-3">Files Created</h4>
+                <pre class="text-gray-400 text-sm"><code>Sigh/
+├── Audio/
+│   ├── AudioConstants.swift      (45 lines)
+│   ├── AudioEngine.swift         (65 lines)
+│   ├── NoiseGenerator.swift      (82 lines)
+│   ├── RaindropScheduler.swift   (95 lines)
+│   └── RaindropSynthesizer.swift (100 lines)
+├── Models/
+│   └── RaindropParameters.swift  (25 lines)
+├── ViewModels/
+│   └── SynthesizerViewModel.swift (160 lines)
+├── Views/
+│   ├── ContentView.swift         (60 lines)
+│   ├── LabeledSlider.swift       (35 lines)
+│   ├── NoiseControlsView.swift   (30 lines)
+│   ├── RaindropControlsView.swift (50 lines)
+│   └── WaveformChartView.swift   (25 lines)
+└── SighApp.swift                 (existing)</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tips for Users -->
+    <section class="max-w-4xl mx-auto px-6 py-12">
+        <h2 class="text-3xl font-bold mb-6">Tips for Using Claude Code</h2>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-gray-800/50 rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-3 text-green-400">Do This</h3>
+                <ul class="text-gray-300 space-y-2 text-sm">
+                    <li>&#10003; Give detailed requirements upfront</li>
+                    <li>&#10003; Let Claude enter Plan Mode for complex tasks</li>
+                    <li>&#10003; Review plans before approving</li>
+                    <li>&#10003; Watch the todo list for progress</li>
+                    <li>&#10003; Let Claude debug its own errors</li>
+                </ul>
+            </div>
+
+            <div class="bg-gray-800/50 rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-3 text-red-400">Avoid This</h3>
+                <ul class="text-gray-300 space-y-2 text-sm">
+                    <li>&#10007; Interrupting mid-implementation</li>
+                    <li>&#10007; Vague or incomplete requirements</li>
+                    <li>&#10007; Skipping the planning phase</li>
+                    <li>&#10007; Not providing context about existing code</li>
+                    <li>&#10007; Expecting perfection on first attempt</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="max-w-4xl mx-auto px-6 py-12 text-center">
+        <div class="border-t border-gray-800 pt-8">
+            <p class="text-gray-400 mb-4">
+                This session was conducted on <strong>January 1, 2026</strong> using
+                <strong>Claude Opus 4.5</strong> via Claude Code CLI.
+            </p>
+            <p class="text-gray-500 text-sm">
+                Total session time: 13 minutes | Files created: 12 | Build attempts: 3 | Errors fixed: 2
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Simple scroll animation
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.phase-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>
